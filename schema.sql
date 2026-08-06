@@ -7,22 +7,42 @@
 -- the signing appointments agenda, the two small scheduling queues, flagged
 -- (objected) documents, recurring office tasks, and a single app-settings row.
 --
--- SECURITY NOTE: this app has no login/auth screen yet, so every table below
--- is given a permissive Row Level Security policy that allows the public
--- "anon" key full read/write access — this matches today's no-auth behavior,
--- but it means anyone with the anon key (which ships in client-side code)
--- can read and modify every row, including client names and phone numbers.
--- Revisit this once Supabase Auth (or any login) is added: replace the
--- "Allow full access" policies with policies scoped to authenticated users.
+-- AUTH: the app requires a signed-in Supabase Auth user (email/password —
+-- see src/components/Login.jsx). Every table's Row Level Security policy
+-- requires auth.role() = 'authenticated', so the anon key alone (no session)
+-- can't read or write anything. Create staff accounts in the Supabase
+-- dashboard under Authentication > Users (there's no self-serve sign-up).
+--
+-- AUDIT: tables staff actively edit carry created_by / updated_by columns
+-- (uuid, references auth.users) so every row remembers who touched it last.
+-- Both are stamped server-side — created_by via a column default of
+-- auth.uid(), updated_by via the set_audit_columns() trigger below — so the
+-- application code never needs to (and can't spoof) set them.
+--
+-- If you already ran an earlier version of this schema against a live
+-- project, don't re-run this file — use auth_and_rls_migration.sql instead,
+-- which upgrades an existing database in place without dropping data.
 -- ============================================================================
 
 create extension if not exists pgcrypto;
 
--- Generic trigger to keep updated_at current on every UPDATE.
-create or replace function set_updated_at()
+-- Keeps updated_at/updated_by current on every UPDATE. Only attached to
+-- tables that have both columns.
+create or replace function set_audit_columns()
 returns trigger as $$
 begin
   new.updated_at = now();
+  new.updated_by = auth.uid();
+  return new;
+end;
+$$ language plpgsql;
+
+-- Same, but for the one table (recurring_task_completions) that tracks its
+-- own "when" via completed_at instead of a generic updated_at.
+create or replace function set_updated_by()
+returns trigger as $$
+begin
+  new.updated_by = auth.uid();
   return new;
 end;
 $$ language plpgsql;
@@ -69,13 +89,15 @@ create table cars (
   notes text,
   completed_at date,
   ready_to_schedule boolean not null default false,
+  created_by uuid references auth.users(id) default auth.uid(),
+  updated_by uuid references auth.users(id),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 create index cars_status_idx on cars (status);
 create index cars_case_date_idx on cars (case_date);
-create trigger cars_set_updated_at before update on cars
-  for each row execute function set_updated_at();
+create trigger cars_set_audit_columns before update on cars
+  for each row execute function set_audit_columns();
 
 -- ============================================================================
 -- DOCUMENTS (certified copies, powers of attorney, estate probate, SAS, etc.)
@@ -118,13 +140,15 @@ create table documents (
   priority text check (priority in ('Low', 'Medium', 'High')),
   notes text,
   completed_at date,
+  created_by uuid references auth.users(id) default auth.uid(),
+  updated_by uuid references auth.users(id),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 create index documents_status_idx on documents (status);
 create index documents_type_idx on documents (document_type);
-create trigger documents_set_updated_at before update on documents
-  for each row execute function set_updated_at();
+create trigger documents_set_audit_columns before update on documents
+  for each row execute function set_audit_columns();
 
 -- ============================================================================
 -- PROPERTIES (real estate — reservation agreement through registration)
@@ -170,16 +194,19 @@ create table properties (
   notes text,
   completed_at date,
   ready_to_schedule boolean not null default false,
+  created_by uuid references auth.users(id) default auth.uid(),
+  updated_by uuid references auth.users(id),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 create index properties_status_idx on properties (status);
 create index properties_stage_idx on properties (stage);
-create trigger properties_set_updated_at before update on properties
-  for each row execute function set_updated_at();
+create trigger properties_set_audit_columns before update on properties
+  for each row execute function set_audit_columns();
 
 -- ============================================================================
 -- DAILY EXCELLENCE LOG (manual entries: Google reviews, for the scoring tab)
+-- Append-only from the UI (no edit flow), so created_by is enough.
 -- ============================================================================
 create table daily_excellence_log (
   id uuid primary key default gen_random_uuid(),
@@ -187,12 +214,14 @@ create table daily_excellence_log (
   google_reviews integer not null default 0,
   negative_reviews integer not null default 0,
   notes text,
+  created_by uuid references auth.users(id) default auth.uid(),
   created_at timestamptz not null default now()
 );
 create index daily_excellence_log_date_idx on daily_excellence_log (log_date);
 
 -- ============================================================================
 -- SIGNING APPOINTMENTS (the front-page agenda)
+-- Append-only from the UI (no edit flow), so created_by is enough.
 -- ============================================================================
 create table signing_appointments (
   id uuid primary key default gen_random_uuid(),
@@ -202,23 +231,27 @@ create table signing_appointments (
   client text,
   description text,                     -- make/model, or "Registry number …"
   notes text,
+  created_by uuid references auth.users(id) default auth.uid(),
   created_at timestamptz not null default now()
 );
 create index signing_appointments_date_idx on signing_appointments (appointment_date);
 
 -- ============================================================================
 -- DOCUMENTS READY TO SCHEDULE (queue that feeds into signing_appointments)
+-- Append-only from the UI (no edit flow), so created_by is enough.
 -- ============================================================================
 create table documents_ready_to_schedule (
   id uuid primary key default gen_random_uuid(),
   client text,
   description text,                     -- vehicle/case description
   notes text,
+  created_by uuid references auth.users(id) default auth.uid(),
   created_at timestamptz not null default now()
 );
 
 -- ============================================================================
--- PROPERTIES NEAR SIGNING
+-- PROPERTIES NEAR SIGNING (missing_items gets edited in place, so this one
+-- gets both created_by and updated_by)
 -- ============================================================================
 create table properties_near_signing (
   id uuid primary key default gen_random_uuid(),
@@ -226,8 +259,13 @@ create table properties_near_signing (
   client text,
   registry_number text,
   missing_items text,
-  created_at timestamptz not null default now()
+  created_by uuid references auth.users(id) default auth.uid(),
+  updated_by uuid references auth.users(id),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
+create trigger properties_near_signing_set_audit_columns before update on properties_near_signing
+  for each row execute function set_audit_columns();
 
 -- ============================================================================
 -- FLAGGED DOCUMENTS ("documentos observados" — registry objections)
@@ -249,32 +287,40 @@ create table flagged_documents (
   priority text check (priority in ('Low', 'Medium', 'High')),
   resolved boolean not null default false,
   resolved_at date,
+  created_by uuid references auth.users(id) default auth.uid(),
+  updated_by uuid references auth.users(id),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 create index flagged_documents_resolved_idx on flagged_documents (resolved);
-create trigger flagged_documents_set_updated_at before update on flagged_documents
-  for each row execute function set_updated_at();
+create trigger flagged_documents_set_audit_columns before update on flagged_documents
+  for each row execute function set_audit_columns();
 
 -- ============================================================================
 -- RECURRING OFFICE TASKS
 -- The task catalog itself (title, frequency, default assignees) stays as
 -- static config in the frontend (src/lib/constants.js) since it rarely
 -- changes; only completion state and assignee overrides are persisted here.
+-- Both tables are upserted (never a plain insert), so a single updated_by
+-- covers "who last touched this" — there's no separate creation event.
 -- ============================================================================
 create table recurring_task_completions (
   task_id text primary key,             -- matches the static task id, e.g. "r1"
   period_key text not null,             -- e.g. "2026-W32" or "2026-08"
+  updated_by uuid references auth.users(id) default auth.uid(),
   completed_at timestamptz not null default now()
 );
+create trigger recurring_task_completions_set_updated_by before update on recurring_task_completions
+  for each row execute function set_updated_by();
 
 create table recurring_task_assignees (
   task_id text primary key,
   assignees text[] not null default '{}',
+  updated_by uuid references auth.users(id) default auth.uid(),
   updated_at timestamptz not null default now()
 );
-create trigger recurring_task_assignees_set_updated_at before update on recurring_task_assignees
-  for each row execute function set_updated_at();
+create trigger recurring_task_assignees_set_audit_columns before update on recurring_task_assignees
+  for each row execute function set_audit_columns();
 
 -- ============================================================================
 -- APP SETTINGS (single row — currently just the "simple mode" UI toggle)
@@ -282,14 +328,15 @@ create trigger recurring_task_assignees_set_updated_at before update on recurrin
 create table app_settings (
   id boolean primary key default true check (id),
   simple_mode boolean not null default false,
+  updated_by uuid references auth.users(id),
   updated_at timestamptz not null default now()
 );
-create trigger app_settings_set_updated_at before update on app_settings
-  for each row execute function set_updated_at();
+create trigger app_settings_set_audit_columns before update on app_settings
+  for each row execute function set_audit_columns();
 insert into app_settings (id, simple_mode) values (true, false);
 
 -- ============================================================================
--- ROW LEVEL SECURITY — open read/write for the anon key (no auth yet)
+-- ROW LEVEL SECURITY — every operation requires a signed-in user
 -- ============================================================================
 alter table cars enable row level security;
 alter table documents enable row level security;
@@ -303,14 +350,25 @@ alter table recurring_task_completions enable row level security;
 alter table recurring_task_assignees enable row level security;
 alter table app_settings enable row level security;
 
-create policy "Allow full access" on cars for all using (true) with check (true);
-create policy "Allow full access" on documents for all using (true) with check (true);
-create policy "Allow full access" on properties for all using (true) with check (true);
-create policy "Allow full access" on daily_excellence_log for all using (true) with check (true);
-create policy "Allow full access" on signing_appointments for all using (true) with check (true);
-create policy "Allow full access" on documents_ready_to_schedule for all using (true) with check (true);
-create policy "Allow full access" on properties_near_signing for all using (true) with check (true);
-create policy "Allow full access" on flagged_documents for all using (true) with check (true);
-create policy "Allow full access" on recurring_task_completions for all using (true) with check (true);
-create policy "Allow full access" on recurring_task_assignees for all using (true) with check (true);
-create policy "Allow full access" on app_settings for all using (true) with check (true);
+create policy "Authenticated users only" on cars for all
+  using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+create policy "Authenticated users only" on documents for all
+  using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+create policy "Authenticated users only" on properties for all
+  using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+create policy "Authenticated users only" on daily_excellence_log for all
+  using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+create policy "Authenticated users only" on signing_appointments for all
+  using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+create policy "Authenticated users only" on documents_ready_to_schedule for all
+  using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+create policy "Authenticated users only" on properties_near_signing for all
+  using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+create policy "Authenticated users only" on flagged_documents for all
+  using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+create policy "Authenticated users only" on recurring_task_completions for all
+  using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+create policy "Authenticated users only" on recurring_task_assignees for all
+  using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+create policy "Authenticated users only" on app_settings for all
+  using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');

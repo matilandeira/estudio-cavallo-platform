@@ -7,9 +7,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
      keeps free-text inputs (onChange fires per keystroke) from hammering the network.
    - On any failed write, the change is rolled back locally and `notify("error", …)`
      is called so the UI can surface it. */
-export function useSupabaseCollection(api, { notify } = {}) {
+export function useSupabaseCollection(api, { notify, enabled = true } = {}) {
   const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState(null);
   const timers = useRef({});
   const pendingPatches = useRef({});
@@ -30,8 +30,9 @@ export function useSupabaseCollection(api, { notify } = {}) {
   }, [api]);
 
   useEffect(() => {
+    if (!enabled) return;
     reload();
-  }, [reload]);
+  }, [reload, enabled]);
 
   const insertRow = useCallback(
     async (row) => {

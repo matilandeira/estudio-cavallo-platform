@@ -11,12 +11,14 @@ export function periodKeyFor(freq) {
   return `${d.getFullYear()}-W${week}`;
 }
 
-export function useRecurringTasks({ notify } = {}) {
+export function useRecurringTasks({ notify, enabled = true } = {}) {
   const [completions, setCompletions] = useState({}); // task_id -> period_key
   const [assigneeOverrides, setAssigneeOverrides] = useState({}); // task_id -> string[]
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
 
   useEffect(() => {
+    if (!enabled) return;
+    setLoading(true);
     Promise.all([recurringTaskCompletionsApi.list(), recurringTaskAssigneesApi.list()])
       .then(([completionRows, assigneeRows]) => {
         setCompletions(Object.fromEntries(completionRows.map((r) => [r.task_id, r.period_key])));
@@ -25,7 +27,7 @@ export function useRecurringTasks({ notify } = {}) {
       .catch((err) => notify?.("error", `No se pudieron cargar las tareas recurrentes: ${err.message}`))
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [enabled]);
 
   const isDone = useCallback((task) => completions[task.id] === periodKeyFor(task.freq), [completions]);
 

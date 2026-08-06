@@ -74,8 +74,11 @@ export const recurringTaskAssigneesApi = {
 };
 
 export const appSettingsApi = {
+  /* maybeSingle (not single): if the settings row isn't visible yet — no
+     session, RLS still filtering, or the seed row is simply missing — this
+     resolves with `null` instead of throwing a "0 rows" coercion error. */
   async get() {
-    const { data, error } = await supabase.from("app_settings").select("*").eq("id", true).single();
+    const { data, error } = await supabase.from("app_settings").select("*").eq("id", true).maybeSingle();
     if (error) throw error;
     return data;
   },
