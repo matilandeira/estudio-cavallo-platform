@@ -46,6 +46,12 @@ Documents, Properties, Operational Excellence and Work, backed by
 
    `.env.local` is gitignored — never commit real keys.
 
+5. (Optional) To use the AI Chat Assistant, get an API key from the
+   [Anthropic Console](https://console.anthropic.com) and set it as
+   `ANTHROPIC_API_KEY` — see the AI Chat Assistant section below for where
+   that needs to go. Without it, the chat widget still works but shows a
+   friendly "not configured yet" message instead of a response.
+
 ## Development
 
 ```bash
@@ -61,7 +67,11 @@ npm run build
 ```
 
 This creates a `dist/` folder ready to deploy to any static host (Netlify,
-Vercel, your own server, etc.).
+Vercel, your own server, etc.) — **except** the AI Chat Assistant, which
+needs `api/chat.js` to run as a Vercel Serverless Function and therefore
+only works when this app is deployed on Vercel (or run locally with
+`vercel dev` instead of `npm run dev`). The rest of the app doesn't depend
+on Vercel at all.
 
 ## Data storage
 
@@ -81,6 +91,45 @@ immediately, no page refresh needed; each subscription is cleaned up
 because those tables are in the `supabase_realtime` publication (set up by
 `schema.sql`/`realtime_migration.sql`) — enabling RLS alone doesn't turn
 realtime on.
+
+## AI Chat Assistant
+
+A floating widget (bottom-right, on every tab) lets signed-in staff ask
+plain-language questions ("¿Qué escrituras se firman esta semana?", "¿Hay
+trámites atrasados?") and get answers grounded in the office's actual
+current data.
+
+- `src/components/AIChatModal.jsx` — the widget. Sends the conversation to
+  `POST /api/chat` with the user's Supabase access token in the
+  `Authorization` header.
+- `api/chat.js` — a Vercel Serverless Function (Node.js, `@anthropic-ai/sdk`
+  + `@supabase/supabase-js`). It:
+  1. Rejects the request unless it carries a valid Supabase session token —
+     without this, the endpoint would be an open proxy to a paid Anthropic
+     key for anyone on the internet.
+  2. Builds a compact summary of pending cars, documents, active
+     properties, upcoming signings, overdue reminders, and open flagged
+     documents, querying Supabase **with that same user's token** so the
+     results respect the exact same Row Level Security as the browser.
+  3. Sends that summary as the system prompt to `claude-3-5-haiku-20241022`
+     along with the conversation, and returns the reply.
+
+**API key handling:** `ANTHROPIC_API_KEY` is read only via
+`process.env.ANTHROPIC_API_KEY` inside `api/chat.js` — a Node.js-only
+context that never ships to the browser. It is deliberately **not**
+prefixed `VITE_`: Vite embeds every `VITE_*` variable into the client-side
+JS bundle at build time, which is correct for the public Supabase anon key
+(designed to be exposed, protected by RLS) but would leak this paid,
+account-billing Anthropic key to anyone who opens devtools. Set it in two
+places:
+- `.env.local` (already has a blank placeholder) — read by `vercel dev` for
+  local testing.
+- Vercel dashboard → Project Settings → Environment Variables — required
+  for the deployed function; `.env.local` is gitignored and never deployed.
+
+If the key isn't set, `api/chat.js` returns
+`{ error: 'API_KEY_MISSING', message: 'El chat de IA aún no tiene configurada la API Key en Vercel.' }`
+instead of crashing, and the widget shows that message as a chat bubble.
 
 ## Authentication & security
 
@@ -111,7 +160,9 @@ estudio-cavallo-platform/
 ├── auth_and_rls_migration.sql # In-place upgrade for a pre-auth database (see Setup)
 ├── realtime_migration.sql     # In-place upgrade to enable realtime (see Setup)
 ├── seed.sql                  # Optional: migrates existing office records
-├── .env.local                 # Supabase URL/key (gitignored)
+├── .env.local                 # Supabase URL/key + ANTHROPIC_API_KEY (gitignored)
+├── api/
+│   └── chat.js                 # Vercel Serverless Function backing the AI Chat Assistant
 └── src/
     ├── main.jsx               # React entry point
     ├── App.jsx                # Auth gate only: spinner / Login / AuthenticatedApp
@@ -131,6 +182,7 @@ estudio-cavallo-platform/
     └── components/
         ├── Login.jsx            # Sign-in screen (email/password)
         ├── AuthenticatedApp.jsx # Everything that needs a session: nav, tabs, data hooks
+        ├── AIChatModal.jsx       # Floating AI Chat Assistant widget (calls /api/chat)
         ├── SharedUI.jsx        # Buttons, badges, pickers, filter bar, header
         ├── Home.jsx             # Home tab: agenda, reminders, KPIs, recurring tasks
         ├── Cars.jsx              # Cars tab

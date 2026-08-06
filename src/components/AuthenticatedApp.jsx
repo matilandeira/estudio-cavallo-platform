@@ -12,6 +12,7 @@ import { useAppSettings } from "../hooks/useAppSettings.js";
 import { useRecurringTasks } from "../hooks/useRecurringTasks.js";
 import { useToasts } from "../hooks/useToasts.js";
 import { Toasts, LoadingBlock } from "./SharedUI.jsx";
+import AIChatModal from "./AIChatModal.jsx";
 import Home from "./Home.jsx";
 import Cars from "./Cars.jsx";
 import Documents from "./Documents.jsx";
@@ -158,6 +159,8 @@ export default function AuthenticatedApp({ user, signOut }) {
           </>
         )}
       </div>
+
+      <AIChatModal />
     </>
   );
 }
