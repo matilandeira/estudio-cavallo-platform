@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { Trash2 } from "lucide-react";
 import { C } from "../lib/theme.jsx";
 import {
   STAFF, DOCUMENT_TYPES, PROBATE_STATUSES, POWER_OF_ATTORNEY_STATUSES, SCAN_STATUSES,
@@ -15,7 +14,7 @@ import {
   label as translate, DOCUMENT_TYPE_LABELS, PROBATE_STATUS_LABELS, POA_STATUS_LABELS, SCAN_STATUS_LABELS,
   RECONSTRUCTION_STATUS_LABELS, SAS_STATUS_LABELS, STATUS_LABELS, NEXT_ACTION_OWNER_LABELS,
 } from "../lib/labels.js";
-import { Header, AddPanel, Field, FilterBar, AssigneesPicker, PriorityPicker, Check, assigneeMatches } from "./SharedUI.jsx";
+import { Header, AddPanel, Field, FilterBar, AssigneesPicker, PriorityPicker, Check, assigneeMatches, DeleteButton, OverdueBadge } from "./SharedUI.jsx";
 
 const blankDocument = () => ({
   case_date: todayISO(), client: "", phone: "", document_type: DOCUMENT_TYPES[0], reference: "",
@@ -61,7 +60,7 @@ export default function Documents({ documents, simpleMode }) {
     if (!now && was) extra.completed_at = null;
     documents.updateRow(id, sanitizeForSupabase({ ...patch, ...extra }), opts);
   };
-  const remove = (id) => documents.removeRow(id);
+  const remove = (id) => documents.removeRowWithUndo(id);
 
   /* Which status field/options/labels apply, depending on document type */
   const primaryStatus = (d) => {
@@ -135,17 +134,18 @@ export default function Documents({ documents, simpleMode }) {
           const pending = isPendingLike(d);
           const dueReminder = pending && d.reminder_date && d.reminder_date <= todayISO();
           return (
-            <div key={d.id} className="ec-card" style={{ padding: 14, borderColor: dueReminder ? C.wax : C.line }}>
+            <div key={d.id} className="ec-card" style={{ padding: 14 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10 }}>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", flex: 1, minWidth: 220 }}>
                   <input className="ec-input" style={{ width: 160, fontWeight: 700 }} placeholder="Cliente" value={d.client || ""} onChange={(e) => update(d.id, { client: e.target.value }, { debounce: true })} />
                   <span style={{ color: C.muted, fontSize: 13 }}>{translate(DOCUMENT_TYPE_LABELS, d.document_type)}</span>
+                  {dueReminder && <OverdueBadge />}
                 </div>
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   <select className="ec-select" style={{ width: "auto" }} value={st.value} onChange={(e) => st.onChange(e.target.value)}>
                     {st.options.map((s) => <option key={s} value={s}>{translate(st.labels, s)}</option>)}
                   </select>
-                  <button onClick={() => remove(d.id)} style={{ background: "none", border: "none", cursor: "pointer", color: C.muted }}><Trash2 size={14} /></button>
+                  <DeleteButton onConfirm={() => remove(d.id)} />
                 </div>
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 8, alignItems: "center" }}>
@@ -194,7 +194,7 @@ export default function Documents({ documents, simpleMode }) {
                   <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12 }}>
                     <span style={{ color: dueReminder ? C.wax : C.muted, fontWeight: dueReminder ? 700 : 400 }}>Próxima fecha clave:</span>
                     <input className="ec-input" style={{ width: 140 }} type="date" value={d.reminder_date || ""} onChange={(e) => update(d.id, { reminder_date: e.target.value })} />
-                    {dueReminder && <span style={{ color: C.wax }}>⚠</span>}
+                    {dueReminder && <OverdueBadge />}
                   </label>
                 </div>
               )}

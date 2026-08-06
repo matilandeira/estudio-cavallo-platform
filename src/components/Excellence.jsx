@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { C } from "../lib/theme.jsx";
 import { LEVELS, computeScore } from "../lib/constants.js";
 import { todayISO, fmtDate } from "../lib/format.js";
@@ -7,7 +7,7 @@ import { sanitizeForSupabase } from "../lib/sanitizePayload.js";
 import { isCarCompleted, isDocumentCompleted, isPropertyCompleted, scoreCategoryForDocument, computeAutomaticTotals } from "../lib/businessLogic.js";
 import { label as translate, CASE_TYPE_LABELS, DOCUMENT_TYPE_LABELS } from "../lib/labels.js";
 import { assigneesLabel } from "./SharedUI.jsx";
-import { Header, AddPanel, Field, Seal } from "./SharedUI.jsx";
+import { Header, AddPanel, Field, Seal, DeleteButton } from "./SharedUI.jsx";
 
 const blankLog = () => ({ log_date: todayISO(), google_reviews: 0, negative_reviews: 0, notes: "" });
 
@@ -44,7 +44,7 @@ export default function Excellence({ dailyExcellenceLog, cars, documents, proper
       setSaving(false);
     }
   };
-  const remove = (id) => dailyExcellenceLog.removeRow(id);
+  const remove = (id) => dailyExcellenceLog.removeRowWithUndo(id, { message: "Registro eliminado · Deshacer" });
 
   const numFields = [["google_reviews", "Reseñas"], ["negative_reviews", "Reseñas negativas"]];
 
@@ -151,7 +151,7 @@ export default function Excellence({ dailyExcellenceLog, cars, documents, proper
                 <td className="ec-mono">{fmtDate(e.log_date)}</td>
                 {numFields.map(([k]) => <td key={k} className="ec-mono">{e[k]}</td>)}
                 <td>{e.notes || "—"}</td>
-                <td><button onClick={() => remove(e.id)} style={{ background: "none", border: "none", cursor: "pointer", color: C.muted }}><Trash2 size={14} /></button></td>
+                <td><DeleteButton onConfirm={() => remove(e.id)} confirmText="¿Eliminar este registro?" /></td>
               </tr>
             ))}
           </tbody>

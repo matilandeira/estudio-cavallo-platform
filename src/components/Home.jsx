@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Bell, Car, ClipboardList, FileText, AlertTriangle, ChevronRight, Plus, Trash2 } from "lucide-react";
+import { Bell, Car, ClipboardList, FileText, AlertTriangle, ChevronRight, Plus } from "lucide-react";
 import { C } from "../lib/theme.jsx";
 import { STAFF, computeScore } from "../lib/constants.js";
 import { todayISO, startOfWeekISO, fmtDate, isOverdue } from "../lib/format.js";
@@ -9,7 +9,7 @@ import {
   computeAutomaticTotals,
 } from "../lib/businessLogic.js";
 import { label as translate, CAR_STATUS_LABELS, DOCUMENT_TYPE_LABELS, CASE_TYPE_LABELS, ORIGIN_LABELS, documentStatusLabelEs } from "../lib/labels.js";
-import { AddPanel, Field, StatusBadge, Seal, assigneesLabel, Check } from "./SharedUI.jsx";
+import { AddPanel, Field, StatusBadge, Seal, assigneesLabel, Check, DeleteButton, OverdueBadge } from "./SharedUI.jsx";
 
 /* ============================== TAB: HOME ============================== */
 export default function Home({
@@ -172,7 +172,8 @@ function UnifiedReminders({ reminders, setTab }) {
                 <div style={{ fontSize: 13, fontWeight: 600 }}>{r.client || "Cliente sin nombre"}</div>
                 <div style={{ fontSize: 11.5, color: C.muted }}>{r.origin} · {r.detail || "—"}</div>
               </div>
-              <span style={{ fontSize: 12, color: overdue ? C.wax : C.muted, fontWeight: overdue ? 700 : 400 }}>{fmtDate(r.date)}{overdue ? " ⚠" : ""}</span>
+              {overdue && <OverdueBadge />}
+              <span style={{ fontSize: 12, color: overdue ? C.wax : C.muted, fontWeight: overdue ? 700 : 400 }}>{fmtDate(r.date)}</span>
             </div>
           );
         })}
@@ -203,7 +204,7 @@ function SigningAgenda({ signingAppointments }) {
       setSaving(false);
     }
   };
-  const remove = (id) => signingAppointments.removeRow(id);
+  const remove = (id) => signingAppointments.removeRowWithUndo(id, { message: "Firma eliminada · Deshacer" });
 
   const today = todayISO();
   const upcoming = signingAppointments.rows
@@ -252,7 +253,7 @@ function SigningAgenda({ signingAppointments }) {
                 <span className="ec-badge" style={{ background: C.paper2, color: a.origin === "Property" ? C.bottle : C.brass, flexShrink: 0 }}>{translate(ORIGIN_LABELS, a.origin) || "Auto"}</span>
                 <span style={{ width: 130, flexShrink: 0, color: C.muted }}>{a.description || "—"}</span>
                 <span style={{ flex: 1, color: C.muted, fontSize: 12.5 }}>{a.notes || ""}</span>
-                <button onClick={() => remove(a.id)} style={{ background: "none", border: "none", cursor: "pointer", color: C.muted, flexShrink: 0 }}><Trash2 size={13} /></button>
+                <DeleteButton onConfirm={() => remove(a.id)} size={13} confirmText="¿Eliminar esta firma agendada?" />
               </div>
             ))}
           </div>
@@ -281,7 +282,7 @@ function ReadyToSchedule({ documentsReadyToSchedule, signingAppointments }) {
       setSaving(false);
     }
   };
-  const remove = (id) => documentsReadyToSchedule.removeRow(id);
+  const remove = (id) => documentsReadyToSchedule.removeRowWithUndo(id, { message: "Quitado de prontos para agendar · Deshacer" });
 
   const draftFor = (id) => drafts[id] || { date: "", time: "10:00" };
   const setDraft = (id, patch) => setDrafts({ ...drafts, [id]: { ...draftFor(id), ...patch } });
@@ -293,7 +294,10 @@ function ReadyToSchedule({ documentsReadyToSchedule, signingAppointments }) {
       appointment_date: draft.date, appointment_time: draft.time || "10:00", origin: "Car",
       client: p.client, description: p.description, notes: p.notes || "",
     }));
-    remove(p.id);
+    // Not a user delete — the record just moved to the Signing agenda, so
+    // this must remove it immediately, not through the confirm/undo flow
+    // (which would otherwise let "Deshacer" resurrect a now-duplicate entry).
+    documentsReadyToSchedule.removeRow(p.id);
   };
 
   return (
@@ -325,7 +329,7 @@ function ReadyToSchedule({ documentsReadyToSchedule, signingAppointments }) {
               <input className="ec-input" style={{ width: 130 }} type="date" value={draft.date} onChange={(e) => setDraft(p.id, { date: e.target.value })} />
               <input className="ec-input" style={{ width: 90 }} type="time" value={draft.time} onChange={(e) => setDraft(p.id, { time: e.target.value })} />
               <button className="ec-btn" onClick={() => schedule(p)}><Plus size={13} /> Agendar</button>
-              <button onClick={() => remove(p.id)} style={{ background: "none", border: "none", cursor: "pointer", color: C.muted }}><Trash2 size={14} /></button>
+              <DeleteButton onConfirm={() => remove(p.id)} confirmText="¿Eliminar este documento pronto?" />
             </div>
           );
         })}
@@ -353,7 +357,7 @@ function PropertiesNearSigning({ properties, propertiesNearSigning, setTab }) {
       setSaving(false);
     }
   };
-  const remove = (id) => propertiesNearSigning.removeRow(id);
+  const remove = (id) => propertiesNearSigning.removeRowWithUndo(id, { message: "Quitado de la lista · Deshacer" });
   const setMissingItems = (id, val) => propertiesNearSigning.updateRow(id, { missing_items: val }, { debounce: true });
 
   return (
@@ -385,7 +389,7 @@ function PropertiesNearSigning({ properties, propertiesNearSigning, setTab }) {
               <div style={{ fontSize: 11.5, color: C.muted }}>Padrón {p.registry_number || "—"}</div>
             </div>
             <input className="ec-input" style={{ width: 220 }} placeholder="Qué está faltando" value={p.missing_items || ""} onChange={(e) => setMissingItems(p.id, e.target.value)} />
-            <button onClick={() => remove(p.id)} style={{ background: "none", border: "none", cursor: "pointer", color: C.muted }}><Trash2 size={14} /></button>
+            <DeleteButton onConfirm={() => remove(p.id)} confirmText="¿Quitar este inmueble de la lista?" />
           </div>
         ))}
       </div>

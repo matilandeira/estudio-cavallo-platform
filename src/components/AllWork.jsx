@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Search, X, Trash2 } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { C } from "../lib/theme.jsx";
 import {
   STAFF, PRIORITIES, PRIORITY_COLOR, CAR_STATUSES, STATUSES, POWER_OF_ATTORNEY_STATUSES,
@@ -11,7 +11,7 @@ import {
   label as translate, CAR_STATUS_LABELS, STATUS_LABELS, DOCUMENT_TYPE_LABELS, PRIORITY_LABELS,
   ORIGIN_LABELS, documentStatusLabelEs, bestEffortStatusLabel,
 } from "../lib/labels.js";
-import { Header, FilterBar, StatusBadge, assigneesLabel, assigneeMatches } from "./SharedUI.jsx";
+import { Header, FilterBar, StatusBadge, assigneesLabel, assigneeMatches, DeleteButton } from "./SharedUI.jsx";
 import FlaggedDocuments from "./FlaggedDocuments.jsx";
 
 export default function AllWork({ cars, documents, properties, flaggedDocuments, setTab, initialFilters }) {
@@ -45,12 +45,12 @@ export default function AllWork({ cars, documents, properties, flaggedDocuments,
   const alreadyFlagged = (it) => (flaggedDocuments.rows || []).some((o) => o.linked_record_id === it.rawId);
   const clearFlag = (it) => {
     const matches = (flaggedDocuments.rows || []).filter((o) => o.linked_record_id === it.rawId);
-    matches.forEach((o) => flaggedDocuments.removeRow(o.id));
+    matches.forEach((o) => flaggedDocuments.removeRowWithUndo(o.id, { message: "Quitado de observados · Deshacer" }));
   };
   const deleteWork = (it) => {
-    if (it.origin === "Car") cars.removeRow(it.rawId);
-    else if (it.origin === "Document") documents.removeRow(it.rawId);
-    else if (it.origin === "Property") properties.removeRow(it.rawId);
+    if (it.origin === "Car") cars.removeRowWithUndo(it.rawId);
+    else if (it.origin === "Document") documents.removeRowWithUndo(it.rawId);
+    else if (it.origin === "Property") properties.removeRowWithUndo(it.rawId);
   };
   const flagIt = (it) => {
     if (alreadyFlagged(it)) return;
@@ -111,9 +111,7 @@ export default function AllWork({ cars, documents, properties, flaggedDocuments,
                     alreadyFlagged(it) ? (
                       <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <span style={{ fontSize: 11, color: C.muted }}>Observado</span>
-                        <button onClick={() => clearFlag(it)} title="Eliminar de Documentos observados" style={{ background: "none", border: "none", cursor: "pointer", color: C.muted, display: "flex", alignItems: "center", padding: 0 }}>
-                          <Trash2 size={13} />
-                        </button>
+                        <DeleteButton onConfirm={() => clearFlag(it)} size={13} title="Eliminar de Documentos observados" confirmText="¿Quitar de Documentos observados?" />
                       </span>
                     ) : (
                       <button onClick={() => flagIt(it)} className="ec-btn-ghost" style={{ fontSize: 11, padding: "4px 8px" }}>Marcar observado</button>
@@ -121,9 +119,7 @@ export default function AllWork({ cars, documents, properties, flaggedDocuments,
                   )}
                 </td>
                 <td onClick={(e) => e.stopPropagation()}>
-                  <button onClick={() => deleteWork(it)} title="Eliminar este trabajo" style={{ background: "none", border: "none", cursor: "pointer", color: C.muted, display: "flex", alignItems: "center", padding: 0 }}>
-                    <Trash2 size={14} />
-                  </button>
+                  <DeleteButton onConfirm={() => deleteWork(it)} title="Eliminar este trabajo" confirmText="¿Eliminar este trabajo?" />
                 </td>
               </tr>
             ))}

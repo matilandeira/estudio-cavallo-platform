@@ -1,12 +1,11 @@
 import React, { useState } from "react";
-import { Trash2 } from "lucide-react";
 import { C } from "../lib/theme.jsx";
 import { STAFF, CAR_CASE_TYPES, CAR_STATUSES, byPriority } from "../lib/constants.js";
 import { todayISO } from "../lib/format.js";
 import { sanitizeForSupabase } from "../lib/sanitizePayload.js";
 import { isCarCompleted, whatsappLinkCarDocsReady, whatsappLinkCoordinateSigning, whatsappLinkRequestDocumentation } from "../lib/businessLogic.js";
 import { label as translate, CASE_TYPE_LABELS, CAR_STATUS_LABELS } from "../lib/labels.js";
-import { Header, AddPanel, Field, FilterBar, AssigneesPicker, PriorityPicker, TriStatus, TriLegend, assigneeMatches } from "./SharedUI.jsx";
+import { Header, AddPanel, Field, FilterBar, AssigneesPicker, PriorityPicker, TriStatus, TriLegend, assigneeMatches, DeleteButton, OverdueBadge } from "./SharedUI.jsx";
 
 const blankCar = () => ({
   case_date: todayISO(), client: "", phone: "", financed: false, plate_number: "", registry_number: "", make_model: "",
@@ -66,7 +65,7 @@ export default function Cars({ cars, documentsReadyToSchedule, simpleMode }) {
     }
     cars.updateRow(id, sanitizeForSupabase({ ...patch, ...extra }), opts);
   };
-  const remove = (id) => cars.removeRow(id);
+  const remove = (id) => cars.removeRowWithUndo(id);
 
   return (
     <div className="ec-fade">
@@ -119,18 +118,19 @@ export default function Cars({ cars, documentsReadyToSchedule, simpleMode }) {
         {filtered.map((a) => {
           const dueReminder = a.status === "Pending" && a.reminder_date && a.reminder_date <= todayISO();
           return (
-          <div key={a.id} className="ec-card" style={{ padding: 14, borderColor: dueReminder ? C.wax : C.line }}>
+          <div key={a.id} className="ec-card" style={{ padding: 14 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10 }}>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", flex: 1, minWidth: 260 }}>
                 <input className="ec-input" style={{ width: 150, fontWeight: 700 }} placeholder="Cliente" value={a.client || ""} onChange={(e) => update(a.id, { client: e.target.value }, { debounce: true })} />
                 <input className="ec-input" style={{ width: 140 }} placeholder="Marca y modelo" value={a.make_model || ""} onChange={(e) => update(a.id, { make_model: e.target.value }, { debounce: true })} />
                 {a.financed && <span className="ec-badge" style={{ background: C.paper2, color: C.wax }}>Financiado</span>}
+                {dueReminder && <OverdueBadge />}
               </div>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <select className="ec-select" style={{ width: "auto" }} value={a.status} onChange={(e) => update(a.id, { status: e.target.value })}>
                   {CAR_STATUSES.map((s) => <option key={s} value={s}>{translate(CAR_STATUS_LABELS, s)}</option>)}
                 </select>
-                <button onClick={() => remove(a.id)} style={{ background: "none", border: "none", cursor: "pointer", color: C.muted }}><Trash2 size={14} /></button>
+                <DeleteButton onConfirm={() => remove(a.id)} />
               </div>
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 8, alignItems: "center" }}>
@@ -193,7 +193,7 @@ export default function Cars({ cars, documentsReadyToSchedule, simpleMode }) {
                 <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12 }}>
                   <span style={{ color: dueReminder ? C.wax : C.muted, fontWeight: dueReminder ? 700 : 400 }}>Recordarme el:</span>
                   <input className="ec-input" style={{ width: 140 }} type="date" value={a.reminder_date || ""} onChange={(e) => update(a.id, { reminder_date: e.target.value })} />
-                  {dueReminder && <span style={{ color: C.wax }}>⚠</span>}
+                  {dueReminder && <OverdueBadge />}
                 </label>
                 <PriorityPicker value={a.priority} onChange={(v) => update(a.id, { priority: v })} />
               </div>

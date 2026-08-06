@@ -1,12 +1,12 @@
 import React, { useState } from "react";
-import { Search, Trash2 } from "lucide-react";
+import { Search } from "lucide-react";
 import { C } from "../lib/theme.jsx";
 import { STAFF, PROPERTY_TYPES, PROPERTY_STAGES, STATUSES, NEXT_ACTION_OWNERS, byPriority } from "../lib/constants.js";
 import { todayISO } from "../lib/format.js";
 import { sanitizeForSupabase } from "../lib/sanitizePayload.js";
 import { isPropertyCompleted } from "../lib/businessLogic.js";
 import { label as translate, PROPERTY_TYPE_LABELS, PROPERTY_STAGE_LABELS, STATUS_LABELS } from "../lib/labels.js";
-import { Header, AddPanel, Field, FilterBar, AssigneesPicker, PriorityPicker, Check, TriStatus, TriLegend, assigneeMatches } from "./SharedUI.jsx";
+import { Header, AddPanel, Field, FilterBar, AssigneesPicker, PriorityPicker, Check, TriStatus, TriLegend, assigneeMatches, DeleteButton, OverdueBadge } from "./SharedUI.jsx";
 
 const blankProperty = () => ({
   case_date: todayISO(), property_type: PROPERTY_TYPES[0], client: "", registry_number: "", assignees: ["Dahiana"],
@@ -73,7 +73,7 @@ export default function Properties({ properties, documentsReadyToSchedule, simpl
     }
     properties.updateRow(id, sanitizeForSupabase({ ...patch, ...extra }), opts);
   };
-  const remove = (id) => properties.removeRow(id);
+  const remove = (id) => properties.removeRowWithUndo(id);
 
   return (
     <div className="ec-fade">
@@ -149,6 +149,7 @@ export default function Properties({ properties, documentsReadyToSchedule, simpl
                   <input className="ec-input" style={{ width: 150, fontWeight: 700 }} placeholder="Cliente" value={i.client || ""} onChange={(e) => update(i.id, { client: e.target.value }, { debounce: true })} />
                   <Field label="Padrón"><input className="ec-input" style={{ width: 100 }} value={i.registry_number || ""} onChange={(e) => update(i.id, { registry_number: e.target.value }, { debounce: true })} /></Field>
                   <span className="ec-badge" style={{ background: C.paper2, color: i.property_type === "Rural" ? C.bottle : C.brass }}>{translate(PROPERTY_TYPE_LABELS, i.property_type) || "Urbano"}</span>
+                  {overdue && <OverdueBadge />}
                 </div>
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   {isLateStage(i.stage) && !isRegistryOnlyStage(i.stage) && (
@@ -156,7 +157,7 @@ export default function Properties({ properties, documentsReadyToSchedule, simpl
                       {STATUSES.map((s) => <option key={s} value={s}>{translate(STATUS_LABELS, s)}</option>)}
                     </select>
                   )}
-                  <button onClick={() => remove(i.id)} style={{ background: "none", border: "none", cursor: "pointer", color: C.muted }}><Trash2 size={14} /></button>
+                  <DeleteButton onConfirm={() => remove(i.id)} />
                 </div>
               </div>
               <div style={{ marginTop: 8 }}>
@@ -200,7 +201,7 @@ export default function Properties({ properties, documentsReadyToSchedule, simpl
                     <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12 }}>
                       <span style={{ color: overdue ? C.wax : C.muted, fontWeight: overdue ? 700 : 400 }}>Próx.: {i.next_action || "—"} —</span>
                       <input className="ec-input" style={{ width: 140 }} type="date" value={i.reminder_date || ""} onChange={(e) => update(i.id, { reminder_date: e.target.value })} />
-                      {overdue && <span style={{ color: C.wax }}>⚠</span>}
+                      {overdue && <OverdueBadge />}
                     </label>
                     <PriorityPicker value={i.priority} onChange={(v) => update(i.id, { priority: v })} />
                   </>

@@ -141,5 +141,49 @@ export function useSupabaseCollection(api, { notify, enabled = true } = {}) {
     [api, notify]
   );
 
-  return { rows, setRows, loading, error, insertRow, updateRow, removeRow, reload };
+  /* Deferred delete backing the DeleteButton confirm popover: hides the row
+     immediately (same optimistic feel as removeRow) but holds off calling
+     Supabase for `delayMs`, and fires an undo-toast (see useToasts.notify's
+     third argument) so the user has a real window to cancel it before the
+     delete becomes permanent. */
+  const removeRowWithUndo = useCallback(
+    (id, { message = "Trámite eliminado · Deshacer", delayMs = 5000 } = {}) => {
+      let removed, index;
+      setRows((prev) => {
+        index = prev.findIndex((r) => r.id === id);
+        removed = index === -1 ? undefined : prev[index];
+        return prev.filter((r) => r.id !== id);
+      });
+
+      let settled = false;
+      const timer = setTimeout(async () => {
+        if (settled) return;
+        settled = true;
+        try {
+          await api.remove(id);
+        } catch (err) {
+          if (removed) setRows((prev) => [removed, ...prev]);
+          notify?.("error", `No se pudo eliminar: ${err.message}`);
+        }
+      }, delayMs);
+
+      const undo = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        if (removed) {
+          setRows((prev) => {
+            const next = [...prev];
+            next.splice(Math.min(index, next.length), 0, removed);
+            return next;
+          });
+        }
+      };
+
+      notify?.("undo", message, undo);
+    },
+    [api, notify]
+  );
+
+  return { rows, setRows, loading, error, insertRow, updateRow, removeRow, removeRowWithUndo, reload };
 }

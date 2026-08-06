@@ -1,5 +1,5 @@
-import React from "react";
-import { X, Plus, CheckCircle2, Circle, Filter, AlertTriangle, CheckCircle } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { X, Plus, CheckCircle2, Circle, Filter, AlertTriangle, CheckCircle, Trash2, Minus, Clock, Check as CheckIcon } from "lucide-react";
 import { C } from "../lib/theme.jsx";
 import { STAFF, PRIORITIES, PRIORITY_COLOR, TRI_STATES } from "../lib/constants.js";
 import { label as translate, PRIORITY_LABELS } from "../lib/labels.js";
@@ -14,20 +14,77 @@ export function Toasts({ toasts, dismiss }) {
           className="ec-toast"
           style={{
             bottom: 20 + i * 56,
-            background: t.type === "error" ? C.wax : C.bottle,
+            background: t.type === "error" ? C.wax : t.type === "undo" ? C.ink : C.bottle,
             color: C.white,
             display: "flex",
             alignItems: "center",
-            gap: 8,
-            cursor: "pointer",
+            gap: 10,
+            cursor: t.onUndo ? "default" : "pointer",
           }}
-          onClick={() => dismiss(t.id)}
+          onClick={() => { if (!t.onUndo) dismiss(t.id); }}
         >
-          {t.type === "error" ? <AlertTriangle size={15} /> : <CheckCircle size={15} />}
-          {t.message}
+          {t.type === "error" ? <AlertTriangle size={15} /> : t.type === "undo" ? <Trash2 size={15} color={C.brassLight} /> : <CheckCircle size={15} />}
+          <span>{t.message}</span>
+          {t.onUndo && (
+            <button
+              onClick={(e) => { e.stopPropagation(); t.onUndo(); dismiss(t.id); }}
+              style={{ background: "none", border: `1px solid ${C.brassLight}`, color: C.brassLight, borderRadius: 3, padding: "3px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer", marginLeft: 2, flexShrink: 0 }}
+            >
+              Deshacer
+            </button>
+          )}
         </div>
       ))}
     </>
+  );
+}
+
+/* ============================== DELETE CONFIRMATION ============================== */
+/* Inline confirm-then-undo delete control used by every delete button in the
+   app. Clicking shows a small popover to confirm; confirming calls
+   onConfirm() (wired to removeRowWithUndo), which hides the row immediately
+   and fires a "Deshacer" toast with a 5s window before the Supabase delete
+   actually happens — see useSupabaseCollection.removeRowWithUndo. */
+export function DeleteButton({ onConfirm, size = 14, title = "Eliminar", confirmText = "¿Eliminar este trámite?" }) {
+  const [confirming, setConfirming] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!confirming) return;
+    const onClickAway = (e) => { if (ref.current && !ref.current.contains(e.target)) setConfirming(false); };
+    document.addEventListener("mousedown", onClickAway);
+    return () => document.removeEventListener("mousedown", onClickAway);
+  }, [confirming]);
+
+  return (
+    <span ref={ref} style={{ position: "relative", display: "inline-flex" }} onClick={(e) => e.stopPropagation()}>
+      <button
+        onClick={() => setConfirming((v) => !v)}
+        title={title}
+        style={{ background: "none", border: "none", cursor: "pointer", color: C.muted, display: "flex", alignItems: "center", padding: 0 }}
+      >
+        <Trash2 size={size} />
+      </button>
+      {confirming && (
+        <div className="ec-card ec-fade" style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 50, padding: 10, width: 190, boxShadow: "0 6px 18px rgba(0,0,0,.18)" }}>
+          <div style={{ fontSize: 12.5, marginBottom: 8, lineHeight: 1.4 }}>{confirmText}</div>
+          <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+            <button className="ec-btn-ghost" style={{ padding: "4px 9px", fontSize: 12 }} onClick={() => setConfirming(false)}>Cancelar</button>
+            <button className="ec-btn" style={{ padding: "4px 9px", fontSize: 12, background: C.wax, borderColor: C.wax }} onClick={() => { setConfirming(false); onConfirm(); }}>Eliminar</button>
+          </div>
+        </div>
+      )}
+    </span>
+  );
+}
+
+/* High-contrast overdue indicator — replaces relying on a subtle 1px card
+   border color alone, so an overdue reminder is scannable at a glance. */
+export function OverdueBadge({ label = "Vencido" }) {
+  return (
+    <span className="ec-badge" style={{ background: C.wax, color: C.white, fontWeight: 700, gap: 4 }}>
+      <AlertTriangle size={11} /> {label}
+    </span>
   );
 }
 
@@ -139,24 +196,37 @@ export const assigneesLabel = (v) => (Array.isArray(v) ? (v.length ? v.join(", "
 /* true if the assignee(s) of a record include the name chosen in a filter */
 export const assigneeMatches = (v, name) => (Array.isArray(v) ? v.includes(name) : v === name);
 
-/* 3-state status: not requested (red) -> requested (yellow) -> ok (green). Click to advance. */
+/* Icon per tri-state, layered on top of color so the states are
+   distinguishable without relying on hue alone (colorblind accessibility,
+   and faster scanning at a glance). */
+const TRI_ICONS = { not_requested: Minus, requested: Clock, ok: CheckIcon };
+
+/* 3-state status: not requested (red, dash) -> requested (yellow, clock) -> ok (green, check). Click to advance. */
 export function TriStatus({ value, onChange }) {
   const idx = Math.max(0, TRI_STATES.findIndex((s) => s.key === value));
   const state = TRI_STATES[idx];
+  const Icon = TRI_ICONS[state.key];
   const advance = () => onChange(TRI_STATES[(idx + 1) % TRI_STATES.length].key);
   return (
     <button onClick={advance} title={`${state.label} — click para cambiar`}
-      style={{ width: 17, height: 17, borderRadius: "50%", border: "1.5px solid rgba(0,0,0,.25)", background: state.color, cursor: "pointer", padding: 0 }} />
+      style={{ width: 17, height: 17, borderRadius: "50%", border: "1.5px solid rgba(0,0,0,.25)", background: state.color, cursor: "pointer", padding: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" }}>
+      <Icon size={11} strokeWidth={3} />
+    </button>
   );
 }
 export function TriLegend() {
   return (
     <div style={{ display: "flex", gap: 14, alignItems: "center", fontSize: 11.5, color: C.muted, marginBottom: 10 }}>
-      {TRI_STATES.map((s) => (
-        <span key={s.key} style={{ display: "flex", alignItems: "center", gap: 5 }}>
-          <span style={{ width: 10, height: 10, borderRadius: "50%", background: s.color, display: "inline-block" }} /> {s.label}
-        </span>
-      ))}
+      {TRI_STATES.map((s) => {
+        const Icon = TRI_ICONS[s.key];
+        return (
+          <span key={s.key} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+            <span style={{ width: 14, height: 14, borderRadius: "50%", background: s.color, display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#fff" }}>
+              <Icon size={9} strokeWidth={3} />
+            </span> {s.label}
+          </span>
+        );
+      })}
     </div>
   );
 }

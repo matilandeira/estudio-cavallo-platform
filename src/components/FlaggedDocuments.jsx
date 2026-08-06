@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { ChevronDown, ChevronRight, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { C } from "../lib/theme.jsx";
 import { PRIORITIES, FLAG_STATUSES, SECTORS } from "../lib/constants.js";
 import { todayISO, fmtDate } from "../lib/format.js";
 import { sanitizeForSupabase } from "../lib/sanitizePayload.js";
 import { monthsElapsed } from "../lib/businessLogic.js";
 import { label as translate, FLAG_STATUS_LABELS, SECTOR_LABELS, PRIORITY_LABELS, DOCUMENT_TYPE_LABELS } from "../lib/labels.js";
-import { AddPanel, Field, PriorityPicker } from "./SharedUI.jsx";
+import { AddPanel, Field, PriorityPicker, DeleteButton } from "./SharedUI.jsx";
 
 const blankFlag = () => ({
   flagged_date: todayISO(), sector: SECTORS[0], linked_record_id: "", client: "", registry_number: "",
@@ -42,7 +42,7 @@ export default function FlaggedDocuments({ flaggedDocuments, cars, documents }) 
       setSaving(false);
     }
   };
-  const remove = (id) => flaggedDocuments.removeRow(id);
+  const remove = (id) => flaggedDocuments.removeRowWithUndo(id, { message: "Observación eliminada · Deshacer" });
   const setStatus = (id, status) => {
     if (status === "Objection Nearly Resolved" || status === "Objection Cleared" || status === "Completed") {
       flaggedDocuments.updateRow(id, { status, resolved: true, resolved_at: todayISO() });
@@ -77,7 +77,7 @@ export default function FlaggedDocuments({ flaggedDocuments, cars, documents }) 
         <select className="ec-select" style={{ width: "auto" }} value={o.status || FLAG_STATUSES[0]} onChange={(e) => setStatus(o.id, e.target.value)}>
           {FLAG_STATUSES.map((s) => <option key={s} value={s}>{translate(FLAG_STATUS_LABELS, s)}</option>)}
         </select>
-        <button onClick={() => remove(o.id)} style={{ background: "none", border: "none", cursor: "pointer", color: C.muted }}><Trash2 size={14} /></button>
+        <DeleteButton onConfirm={() => remove(o.id)} confirmText="¿Eliminar esta observación?" />
       </div>
     );
   };

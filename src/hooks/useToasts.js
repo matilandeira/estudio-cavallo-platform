@@ -12,7 +12,18 @@ export function useToasts() {
   const nextId = useRef(0);
   const timers = useRef({});
 
-  const notify = useCallback((type, message) => {
+  const notify = useCallback((type, message, onUndo) => {
+    // Undo toasts (delete confirmations) are never deduped — each is tied to
+    // a specific row and its own undo() closure — and get a fixed 5s window
+    // matching removeRowWithUndo's deferred-delete timer.
+    if (onUndo) {
+      const id = nextId.current++;
+      timers.current[id] = setTimeout(() => {
+        setToasts((cur) => cur.filter((t) => t.id !== id));
+      }, 5000);
+      setToasts((prev) => [...prev, { id, type, message, onUndo }].slice(-MAX_VISIBLE_TOASTS));
+      return;
+    }
     setToasts((prev) => {
       const existing = prev.find((t) => t.type === type && t.message === message);
       if (existing) {
