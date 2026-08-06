@@ -16,7 +16,7 @@ import { createClient } from "@supabase/supabase-js";
      as the browser — this function only ever sees what the signed-in user
      could already see themselves. */
 
-const MODEL = "claude-3-5-haiku-20241022";
+const MODEL = "claude-haiku-4-5-20251001";
 const MAX_HISTORY = 20; // caps token usage on long conversations
 const MAX_MESSAGE_LENGTH = 4000; // caps a single oversized message
 
