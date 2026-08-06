@@ -7,6 +7,8 @@ import { sanitizeForSupabase } from "../lib/sanitizePayload.js";
 import { isPropertyCompleted } from "../lib/businessLogic.js";
 import { label as translate, PROPERTY_TYPE_LABELS, PROPERTY_STAGE_LABELS, STATUS_LABELS } from "../lib/labels.js";
 import { Header, AddPanel, Field, FilterBar, AssigneesPicker, PriorityPicker, Check, TriStatus, TriLegend, assigneeMatches, DeleteButton, OverdueBadge, UrgentFilterToggle, useRowHighlight, BulkActionBar, useNewItemShortcut } from "./SharedUI.jsx";
+import TourButton from "./TourButton.jsx";
+import { propertiesTourSteps } from "../lib/tours.js";
 
 const blankProperty = () => ({
   case_date: todayISO(), property_type: PROPERTY_TYPES[0], client: "", registry_number: "", assignees: ["Dahiana"],
@@ -115,7 +117,7 @@ export default function Properties({ properties, documentsReadyToSchedule, simpl
 
   return (
     <div className="ec-fade">
-      <Header title="Inmuebles" subtitle="Seguimiento por cliente y padrón, con checklist y etapa." onAdd={() => setAdding(true)} />
+      <Header title="Inmuebles" subtitle="Seguimiento por cliente y padrón, con checklist y etapa." onAdd={() => setAdding(true)} actions={<TourButton tourId="properties" steps={propertiesTourSteps} />} />
       <AddPanel open={adding} onClose={() => setAdding(false)} onSubmit={save} title="Nuevo inmueble">
         <div className="ec-form-grid" style={{ marginBottom: 12 }}>
           <Field label="Fecha"><input className="ec-input" type="date" value={form.case_date} onChange={(e) => setForm({ ...form, case_date: e.target.value })} /></Field>
@@ -163,7 +165,7 @@ export default function Properties({ properties, documentsReadyToSchedule, simpl
       </AddPanel>
 
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, maxWidth: 320, flex: "1 1 240px" }}>
+        <div data-tour="search" style={{ display: "flex", alignItems: "center", gap: 8, maxWidth: 320, flex: "1 1 240px" }}>
           <Search size={14} color={C.muted} />
           <input className="ec-input" placeholder="Buscar por cliente o padrón…" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => { if (e.key === "Escape") setSearch(""); }} />
         </div>
@@ -171,7 +173,7 @@ export default function Properties({ properties, documentsReadyToSchedule, simpl
           { key: "assignee", label: "Responsable", values: STAFF },
           { key: "status", label: "Estado", values: STATUSES, labelFor: (v) => translate(STATUS_LABELS, v) },
         ]} />
-        <UrgentFilterToggle active={urgentOnly} onChange={setUrgentOnly} count={urgentCount} />
+        <span data-tour="urgent-toggle"><UrgentFilterToggle active={urgentOnly} onChange={setUrgentOnly} count={urgentCount} /></span>
       </div>
 
       <TriLegend />
@@ -185,14 +187,14 @@ export default function Properties({ properties, documentsReadyToSchedule, simpl
         onBulkAssignee={bulkReassign}
       />
       {filtered.length > 0 && (
-        <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, cursor: "pointer" }}>
+        <label data-tour="bulk-select" style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, cursor: "pointer" }}>
           <Check checked={allSelected} onChange={toggleSelectAll} />
           <span style={{ fontSize: 12, color: C.muted }}>Seleccionar todo ({filtered.length})</span>
         </label>
       )}
       <div style={{ display: "grid", gap: 10 }}>
         {filtered.length === 0 && <div className="ec-card" style={{ padding: 24, textAlign: "center", color: C.muted }}>No se encontraron inmuebles.</div>}
-        {filtered.map((i) => {
+        {filtered.map((i, idx) => {
           const keys = checklistFor(i.property_type);
           const done = keys.filter(([k]) => i[k]).length;
           const overdue = i.reminder_date && i.status !== "Completed" && i.reminder_date < todayISO();
@@ -248,7 +250,7 @@ export default function Properties({ properties, documentsReadyToSchedule, simpl
                     </div>
                   )}
                 </div>
-                <select className="ec-select" style={{ width: "auto" }} value={i.stage} onChange={(e) => update(i.id, { stage: e.target.value })}>
+                <select data-tour={idx === 0 ? "status-select" : undefined} className="ec-select" style={{ width: "auto" }} value={i.stage} onChange={(e) => update(i.id, { stage: e.target.value })}>
                   {PROPERTY_STAGES.map((e) => <option key={e} value={e}>{translate(PROPERTY_STAGE_LABELS, e)}</option>)}
                 </select>
                 {!simpleMode && !isRegistryOnlyStage(i.stage) && (

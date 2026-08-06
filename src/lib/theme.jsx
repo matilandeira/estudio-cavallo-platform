@@ -85,6 +85,34 @@ export function StyleSheet() {
       .ec-mobile-item { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-bottom: 1px solid ${C.line}; }
       .ec-mobile-item:last-child { border-bottom: none; }
       .ec-mobile-item-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 12.5px; color: ${C.muted}; }
+
+      /* ============================== PRODUCT TOUR (driver.js) ==============================
+         driver.js ships unstyled-ish defaults (generic sans-serif, blue-ish buttons); this
+         restyles its popover to match the notarial ledger look instead of feeling bolted on. */
+      .driver-popover.ec-tour-popover {
+        --driver-popover-font-family: 'IBM Plex Sans', sans-serif;
+        background: ${C.paper3}; border: 1px solid ${C.line}; border-radius: 6px;
+        box-shadow: 0 12px 32px rgba(0,0,0,.28); max-width: 320px; padding: 16px;
+      }
+      .ec-tour-popover .driver-popover-title { font-family: 'Source Serif 4', serif; font-size: 16px; color: ${C.ink}; }
+      .ec-tour-popover .driver-popover-description { color: ${C.ink}; font-size: 13px; line-height: 1.5; }
+      .ec-tour-popover .driver-popover-progress-text { color: ${C.muted}; font-size: 11.5px; }
+      .ec-tour-popover .driver-popover-footer-btn {
+        border: 1px solid ${C.line}; border-radius: 3px; background: ${C.white}; color: ${C.ink};
+        font-family: 'IBM Plex Sans', sans-serif; font-weight: 600; padding: 5px 11px;
+      }
+      .ec-tour-popover .driver-popover-footer-btn:hover { border-color: ${C.wax}; color: ${C.wax}; background: ${C.white}; }
+      .ec-tour-popover .driver-popover-navigation-btns button:last-child {
+        background: ${C.ink}; border-color: ${C.ink}; color: ${C.white};
+      }
+      .ec-tour-popover .driver-popover-navigation-btns button:last-child:hover { background: ${C.wax}; border-color: ${C.wax}; color: ${C.white}; }
+      .ec-tour-popover .driver-popover-close-btn { color: ${C.muted}; }
+      .ec-tour-popover .driver-popover-close-btn:hover { color: ${C.wax}; }
+      .ec-tour-popover .driver-popover-arrow-side-left { border-right-color: ${C.paper3}; }
+      .ec-tour-popover .driver-popover-arrow-side-right { border-left-color: ${C.paper3}; }
+      .ec-tour-popover .driver-popover-arrow-side-top { border-bottom-color: ${C.paper3}; }
+      .ec-tour-popover .driver-popover-arrow-side-bottom { border-top-color: ${C.paper3}; }
+      #driver-highlighted-element-stage, .driver-active-element { border-radius: 6px; }
     `}</style>
   );
 }

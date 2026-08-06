@@ -413,14 +413,17 @@ export function FilterBar({ filters, setFilters, options }) {
 }
 
 /* ============================== SHARED HEADER ============================== */
-export function Header({ title, subtitle, onAdd, addLabel = "Agregar", addDisabled = false }) {
+export function Header({ title, subtitle, onAdd, addLabel = "Agregar", addDisabled = false, actions }) {
   return (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 16 }}>
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
       <div>
         <h1 className="ec-serif" style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>{title}</h1>
         {subtitle && <p style={{ fontSize: 12.5, color: C.muted, margin: "4px 0 0" }}>{subtitle}</p>}
       </div>
-      {onAdd && <button className="ec-btn" onClick={onAdd} disabled={addDisabled}><Plus size={14} /> {addLabel}</button>}
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        {actions}
+        {onAdd && <button className="ec-btn" onClick={onAdd} disabled={addDisabled}><Plus size={14} /> {addLabel}</button>}
+      </div>
     </div>
   );
 }

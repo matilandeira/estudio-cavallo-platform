@@ -6,6 +6,8 @@ import { sanitizeForSupabase } from "../lib/sanitizePayload.js";
 import { isCarCompleted, whatsappLinkCarDocsReady, whatsappLinkCoordinateSigning, whatsappLinkRequestDocumentation } from "../lib/businessLogic.js";
 import { label as translate, CASE_TYPE_LABELS, CAR_STATUS_LABELS } from "../lib/labels.js";
 import { Header, AddPanel, Field, FilterBar, AssigneesPicker, PriorityPicker, TriStatus, TriLegend, assigneeMatches, DeleteButton, OverdueBadge, UrgentFilterToggle, useRowHighlight, Check, BulkActionBar, useNewItemShortcut } from "./SharedUI.jsx";
+import TourButton from "./TourButton.jsx";
+import { carsTourSteps } from "../lib/tours.js";
 
 const blankCar = () => ({
   case_date: todayISO(), client: "", phone: "", financed: false, plate_number: "", registry_number: "", make_model: "",
@@ -112,7 +114,7 @@ export default function Cars({ cars, documentsReadyToSchedule, simpleMode, highl
 
   return (
     <div className="ec-fade">
-      <Header title="Automotores" subtitle="Registro diario y cuatro controles esenciales." onAdd={() => setAdding(true)} />
+      <Header title="Automotores" subtitle="Registro diario y cuatro controles esenciales." onAdd={() => setAdding(true)} actions={<TourButton tourId="cars" steps={carsTourSteps} />} />
       <AddPanel open={adding} onClose={() => setAdding(false)} onSubmit={save} title="Nuevo trámite de automotor">
         <div className="ec-form-grid">
           <Field label="Fecha"><input className="ec-input" type="date" value={form.case_date} onChange={(e) => setForm({ ...form, case_date: e.target.value })} /></Field>
@@ -155,7 +157,7 @@ export default function Cars({ cars, documentsReadyToSchedule, simpleMode, highl
           { key: "status", label: "Estado", values: CAR_STATUSES.filter((s) => s !== "Notarized"), labelFor: (v) => translate(CAR_STATUS_LABELS, v) },
           { key: "assignee", label: "Responsable", values: STAFF },
         ]} />
-        <UrgentFilterToggle active={urgentOnly} onChange={setUrgentOnly} count={urgentCount} />
+        <span data-tour="urgent-toggle"><UrgentFilterToggle active={urgentOnly} onChange={setUrgentOnly} count={urgentCount} /></span>
       </div>
 
       {!simpleMode && <TriLegend />}
@@ -169,14 +171,14 @@ export default function Cars({ cars, documentsReadyToSchedule, simpleMode, highl
         onBulkAssignee={bulkReassign}
       />
       {filtered.length > 0 && (
-        <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, cursor: "pointer" }}>
+        <label data-tour="bulk-select" style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, cursor: "pointer" }}>
           <Check checked={allSelected} onChange={toggleSelectAll} />
           <span style={{ fontSize: 12, color: C.muted }}>Seleccionar todo ({filtered.length})</span>
         </label>
       )}
       <div style={{ display: "grid", gap: 10 }}>
         {filtered.length === 0 && <div className="ec-card" style={{ padding: 24, textAlign: "center", color: C.muted }}>No hay autos registrados todavía.</div>}
-        {filtered.map((a) => {
+        {filtered.map((a, idx) => {
           const dueReminder = a.status === "Pending" && a.reminder_date && a.reminder_date <= todayISO();
           return (
           <div key={a.id} id={`row-${a.id}`} className={activeHighlight === a.id ? "ec-card ec-highlight" : "ec-card"} style={{ padding: 14 }}>
@@ -189,7 +191,7 @@ export default function Cars({ cars, documentsReadyToSchedule, simpleMode, highl
                 {dueReminder && <OverdueBadge />}
               </div>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <select className="ec-select" style={{ width: "auto" }} value={a.status} onChange={(e) => update(a.id, { status: e.target.value })}>
+                <select data-tour={idx === 0 ? "status-select" : undefined} className="ec-select" style={{ width: "auto" }} value={a.status} onChange={(e) => update(a.id, { status: e.target.value })}>
                   {CAR_STATUSES.map((s) => <option key={s} value={s}>{translate(CAR_STATUS_LABELS, s)}</option>)}
                 </select>
                 <DeleteButton onConfirm={() => remove(a.id)} />

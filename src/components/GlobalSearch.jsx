@@ -105,6 +105,7 @@ export default function GlobalSearch({ cars, documents, properties, signingAppoi
   return (
     <>
       <button
+        data-tour="global-search"
         onClick={() => setOpen(true)}
         title="Buscar (Ctrl/Cmd+K)"
         style={{ background: "none", border: `1px solid ${C.brassLight}`, borderRadius: 4, cursor: "pointer", color: C.brassLight, fontSize: 12, padding: "6px 10px", display: "flex", alignItems: "center", gap: 6 }}

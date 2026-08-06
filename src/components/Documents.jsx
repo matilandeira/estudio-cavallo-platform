@@ -15,6 +15,8 @@ import {
   RECONSTRUCTION_STATUS_LABELS, SAS_STATUS_LABELS, STATUS_LABELS, NEXT_ACTION_OWNER_LABELS,
 } from "../lib/labels.js";
 import { Header, AddPanel, Field, FilterBar, AssigneesPicker, PriorityPicker, Check, assigneeMatches, DeleteButton, OverdueBadge, UrgentFilterToggle, useRowHighlight, BulkActionBar, useNewItemShortcut } from "./SharedUI.jsx";
+import TourButton from "./TourButton.jsx";
+import { documentsTourSteps } from "../lib/tours.js";
 
 const blankDocument = () => ({
   case_date: todayISO(), client: "", phone: "", document_type: DOCUMENT_TYPES[0], reference: "",
@@ -100,7 +102,7 @@ export default function Documents({ documents, simpleMode, highlightId }) {
 
   return (
     <div className="ec-fade">
-      <Header title="Documentos" subtitle="Testimonios, certificados, poderes, sucesiones, SAS y otros." onAdd={() => setAdding(true)} />
+      <Header title="Documentos" subtitle="Testimonios, certificados, poderes, sucesiones, SAS y otros." onAdd={() => setAdding(true)} actions={<TourButton tourId="documents" steps={documentsTourSteps} />} />
       <AddPanel open={adding} onClose={() => setAdding(false)} onSubmit={save} title="Nuevo documento">
         <div className="ec-form-grid">
           <Field label="Fecha"><input className="ec-input" type="date" value={form.case_date} onChange={(e) => setForm({ ...form, case_date: e.target.value })} /></Field>
@@ -153,7 +155,7 @@ export default function Documents({ documents, simpleMode, highlightId }) {
           { key: "document_type", label: "Tipo", values: DOCUMENT_TYPES, labelFor: (v) => translate(DOCUMENT_TYPE_LABELS, v) },
           { key: "assignee", label: "Responsable", values: STAFF },
         ]} />
-        <UrgentFilterToggle active={urgentOnly} onChange={setUrgentOnly} count={urgentCount} />
+        <span data-tour="urgent-toggle"><UrgentFilterToggle active={urgentOnly} onChange={setUrgentOnly} count={urgentCount} /></span>
       </div>
 
       <BulkActionBar
@@ -166,14 +168,14 @@ export default function Documents({ documents, simpleMode, highlightId }) {
         onBulkAssignee={bulkReassign}
       />
       {filtered.length > 0 && (
-        <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, cursor: "pointer" }}>
+        <label data-tour="bulk-select" style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, cursor: "pointer" }}>
           <Check checked={allSelected} onChange={toggleSelectAll} />
           <span style={{ fontSize: 12, color: C.muted }}>Seleccionar todo ({filtered.length})</span>
         </label>
       )}
       <div style={{ display: "grid", gap: 10 }}>
         {filtered.length === 0 && <div className="ec-card" style={{ padding: 24, textAlign: "center", color: C.muted }}>No hay documentos registrados todavía.</div>}
-        {filtered.map((d) => {
+        {filtered.map((d, idx) => {
           const st = primaryStatus(d);
           const pending = isPendingLike(d);
           const dueReminder = pending && d.reminder_date && d.reminder_date <= todayISO();
@@ -187,7 +189,7 @@ export default function Documents({ documents, simpleMode, highlightId }) {
                   {dueReminder && <OverdueBadge />}
                 </div>
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <select className="ec-select" style={{ width: "auto" }} value={st.value} onChange={(e) => st.onChange(e.target.value)}>
+                  <select data-tour={idx === 0 ? "status-select" : undefined} className="ec-select" style={{ width: "auto" }} value={st.value} onChange={(e) => st.onChange(e.target.value)}>
                     {st.options.map((s) => <option key={s} value={s}>{translate(st.labels, s)}</option>)}
                   </select>
                   <DeleteButton onConfirm={() => remove(d.id)} />

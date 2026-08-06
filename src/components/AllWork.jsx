@@ -12,6 +12,8 @@ import {
   ORIGIN_LABELS, documentStatusLabelEs, bestEffortStatusLabel,
 } from "../lib/labels.js";
 import { Header, FilterBar, StatusBadge, assigneesLabel, assigneeMatches, DeleteButton, UrgentFilterToggle } from "./SharedUI.jsx";
+import TourButton from "./TourButton.jsx";
+import { workTourSteps } from "../lib/tours.js";
 import FlaggedDocuments from "./FlaggedDocuments.jsx";
 
 export default function AllWork({ cars, documents, properties, flaggedDocuments, setTab, initialFilters }) {
@@ -79,22 +81,24 @@ export default function AllWork({ cars, documents, properties, flaggedDocuments,
 
   return (
     <div className="ec-fade">
-      <Header title="Todos los trabajos" subtitle="Autos, documentos e inmuebles en un solo lugar, filtrable por responsable." />
+      <Header title="Todos los trabajos" subtitle="Autos, documentos e inmuebles en un solo lugar, filtrable por responsable." actions={<TourButton tourId="work" steps={workTourSteps} />} />
 
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, maxWidth: 280, flex: "1 1 220px" }}>
+        <div data-tour="search" style={{ display: "flex", alignItems: "center", gap: 8, maxWidth: 280, flex: "1 1 220px" }}>
           <Search size={14} color={C.muted} />
           <input className="ec-input" placeholder="Buscar por cliente, padrón o marca y modelo…" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => { if (e.key === "Escape") setSearch(""); }} />
         </div>
         <input className="ec-input" style={{ width: 150 }} type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
         {month && <button className="ec-btn-ghost" onClick={() => setMonth("")}><X size={13} /> Mes</button>}
-        <FilterBar filters={filters} setFilters={setFilters} options={[
-          { key: "assignee", label: "Responsable", values: STAFF },
-          { key: "origin", label: "Tipo", values: ["Car", "Document", "Property"], labelFor: (v) => translate(ORIGIN_LABELS, v) },
-          { key: "status", label: "Estado", values: allStatuses, labelFor: (v) => bestEffortStatusLabel(v) },
-          { key: "priority", label: "Prioridad", values: PRIORITIES, labelFor: (v) => translate(PRIORITY_LABELS, v) },
-        ]} />
-        <UrgentFilterToggle active={urgentOnly} onChange={setUrgentOnly} count={urgentCount} />
+        <div data-tour="filters">
+          <FilterBar filters={filters} setFilters={setFilters} options={[
+            { key: "assignee", label: "Responsable", values: STAFF },
+            { key: "origin", label: "Tipo", values: ["Car", "Document", "Property"], labelFor: (v) => translate(ORIGIN_LABELS, v) },
+            { key: "status", label: "Estado", values: allStatuses, labelFor: (v) => bestEffortStatusLabel(v) },
+            { key: "priority", label: "Prioridad", values: PRIORITIES, labelFor: (v) => translate(PRIORITY_LABELS, v) },
+          ]} />
+        </div>
+        <span data-tour="urgent-toggle"><UrgentFilterToggle active={urgentOnly} onChange={setUrgentOnly} count={urgentCount} /></span>
       </div>
 
       {/* Desktop: full table. Below 768px this is replaced by single-column

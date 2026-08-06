@@ -10,6 +10,8 @@ import {
 } from "../lib/businessLogic.js";
 import { label as translate, CAR_STATUS_LABELS, DOCUMENT_TYPE_LABELS, CASE_TYPE_LABELS, ORIGIN_LABELS, documentStatusLabelEs } from "../lib/labels.js";
 import { AddPanel, Field, StatusBadge, Seal, assigneesLabel, Check, DeleteButton, OverdueBadge, UrgentFilterToggle, useRowHighlight } from "./SharedUI.jsx";
+import TourButton from "./TourButton.jsx";
+import { homeTourSteps } from "../lib/tours.js";
 
 /* ============================== TAB: HOME ============================== */
 export default function Home({
@@ -83,15 +85,18 @@ export default function Home({
 
   return (
     <div className="ec-fade">
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+        <TourButton tourId="home" steps={homeTourSteps} />
+      </div>
       <div className="ec-dashboard-grid" style={{ marginBottom: 18 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-          <div className="ec-card" style={{ padding: "6px 0" }}>
+          <div className="ec-card" style={{ padding: "6px 0" }} data-tour="signing-agenda">
             <SigningAgenda signingAppointments={signingAppointments} highlightId={highlightId} />
           </div>
-          <div className="ec-card" style={{ padding: "6px 0" }}>
+          <div className="ec-card" style={{ padding: "6px 0" }} data-tour="ready-to-schedule">
             <ReadyToSchedule documentsReadyToSchedule={documentsReadyToSchedule} signingAppointments={signingAppointments} />
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 10 }}>
+          <div data-tour="kpi-cards" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 10 }}>
             {cards.map((c) => (
               <button key={c.label} onClick={() => setTab(c.tab)} className="ec-card" style={{ textAlign: "left", padding: "14px 16px", cursor: "pointer", borderColor: c.danger && c.value > 0 ? C.wax : C.line }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -194,7 +199,7 @@ function UnifiedReminders({ reminders, setTab, urgentOnly, setUrgentOnly, weekCo
       <div style={{ padding: "10px 16px", borderBottom: `1.5px solid ${C.ink}`, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
         <span className="ec-serif" style={{ fontWeight: 700, fontSize: 14.5, display: "flex", alignItems: "center", gap: 6 }}><Bell size={15} color={C.brass} /> Recordatorios</span>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <UrgentFilterToggle active={urgentOnly} onChange={setUrgentOnly} count={urgentOnly ? undefined : weekCount} />
+          <span data-tour="urgent-toggle"><UrgentFilterToggle active={urgentOnly} onChange={setUrgentOnly} count={urgentOnly ? undefined : weekCount} /></span>
           <span style={{ fontSize: 12, color: C.muted }}>{reminders.length}</span>
         </div>
       </div>
