@@ -158,9 +158,14 @@ export default async function handler(req, res) {
     res.status(200).json({ reply });
   } catch (err) {
     console.error("api/chat error:", err);
+    // err.message here is whatever the Anthropic SDK, or the Supabase context
+    // queries in buildContext(), actually threw (invalid key, no credit
+    // balance, network failure, RLS/query error, etc.) — surfaced verbatim so
+    // the widget/console can show the real cause instead of a generic 500.
     res.status(500).json({
-      error: "ANTHROPIC_ERROR",
+      error: "CHAT_ERROR",
       message: "No se pudo obtener respuesta de la IA. Intentá nuevamente en unos segundos.",
+      detail: err?.message || String(err),
     });
   }
 }

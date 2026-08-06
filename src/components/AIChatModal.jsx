@@ -55,7 +55,11 @@ export default function AIChatModal() {
       const payload = await res.json().catch(() => null);
 
       if (!res.ok || !payload || payload.error) {
-        setMessages((prev) => [...prev, { role: "assistant", content: payload?.message || GENERIC_ERROR, at: new Date(), isError: true }]);
+        const message = payload?.message || GENERIC_ERROR;
+        const detail = payload?.detail;
+        if (detail) console.error(`api/chat (${payload?.error || res.status}):`, detail);
+        const content = detail ? `${message}\n\nDetalle: ${detail}` : message;
+        setMessages((prev) => [...prev, { role: "assistant", content, at: new Date(), isError: true }]);
         return;
       }
       setMessages((prev) => [...prev, { role: "assistant", content: payload.reply || "…", at: new Date() }]);
