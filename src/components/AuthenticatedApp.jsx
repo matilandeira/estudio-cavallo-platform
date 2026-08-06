@@ -12,6 +12,7 @@ import { useAppSettings } from "../hooks/useAppSettings.js";
 import { useRecurringTasks } from "../hooks/useRecurringTasks.js";
 import { useToasts } from "../hooks/useToasts.js";
 import { Toasts, LoadingBlock } from "./SharedUI.jsx";
+import GlobalSearch from "./GlobalSearch.jsx";
 import AIChatModal from "./AIChatModal.jsx";
 import Home from "./Home.jsx";
 import Cars from "./Cars.jsx";
@@ -59,7 +60,13 @@ function exportToExcel({ cars, documents, properties, dailyExcellenceLog, flagge
 export default function AuthenticatedApp({ user, signOut }) {
   const [tab, setTab] = useState("home");
   const [workInitialFilters, setWorkInitialFilters] = useState({});
+  const [highlight, setHighlight] = useState(null); // { tab, id } — set by GlobalSearch "jump to item"
   const { toasts, notify, dismiss } = useToasts();
+
+  const goToItem = (targetTab, id) => {
+    setTab(targetTab);
+    setHighlight({ tab: targetTab, id });
+  };
 
   const { simpleMode, loading: settingsLoading, toggleSimpleMode } = useAppSettings({ notify });
   const cars = useSupabaseCollection(carsApi, { notify });
@@ -90,6 +97,7 @@ export default function AuthenticatedApp({ user, signOut }) {
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <GlobalSearch cars={cars} documents={documents} properties={properties} signingAppointments={signingAppointments} onNavigate={goToItem} />
             <button onClick={toggleSimpleMode} style={{ background: simpleMode ? C.brass : "none", border: `1px solid ${C.brassLight}`, borderRadius: 4, cursor: "pointer", color: simpleMode ? C.ink : C.brassLight, fontSize: 12, padding: "4px 10px", fontWeight: 600 }}>
               {simpleMode ? "Modo simple" : "Modo completo"}
             </button>
@@ -144,14 +152,15 @@ export default function AuthenticatedApp({ user, signOut }) {
                 signingAppointments={signingAppointments} documentsReadyToSchedule={documentsReadyToSchedule}
                 propertiesNearSigning={propertiesNearSigning} flaggedDocuments={flaggedDocuments}
                 setTab={setTab} setWorkInitialFilters={setWorkInitialFilters} recurringTasks={recurringTasks}
+                highlightId={highlight?.tab === "home" ? highlight.id : null}
               />
             )}
             {tab === "work" && (
               <AllWork cars={cars} documents={documents} properties={properties} flaggedDocuments={flaggedDocuments} setTab={setTab} initialFilters={workInitialFilters} />
             )}
-            {tab === "cars" && <Cars cars={cars} documentsReadyToSchedule={documentsReadyToSchedule} simpleMode={simpleMode} />}
-            {tab === "documents" && <Documents documents={documents} simpleMode={simpleMode} />}
-            {tab === "properties" && <Properties properties={properties} documentsReadyToSchedule={documentsReadyToSchedule} simpleMode={simpleMode} />}
+            {tab === "cars" && <Cars cars={cars} documentsReadyToSchedule={documentsReadyToSchedule} simpleMode={simpleMode} highlightId={highlight?.tab === "cars" ? highlight.id : null} />}
+            {tab === "documents" && <Documents documents={documents} simpleMode={simpleMode} highlightId={highlight?.tab === "documents" ? highlight.id : null} />}
+            {tab === "properties" && <Properties properties={properties} documentsReadyToSchedule={documentsReadyToSchedule} simpleMode={simpleMode} highlightId={highlight?.tab === "properties" ? highlight.id : null} />}
             {tab === "excellence" && (
               <Excellence dailyExcellenceLog={dailyExcellenceLog} cars={cars} documents={documents} properties={properties} flaggedDocuments={flaggedDocuments} setTab={setTab} />
             )}

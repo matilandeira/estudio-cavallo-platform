@@ -5,19 +5,20 @@ import {
   STAFF, PRIORITIES, PRIORITY_COLOR, CAR_STATUSES, STATUSES, POWER_OF_ATTORNEY_STATUSES,
   PROBATE_STATUSES, SAS_STATUSES, SCAN_STATUSES, RECONSTRUCTION_STATUSES, FLAG_STATUSES,
 } from "../lib/constants.js";
-import { todayISO, fmtDate } from "../lib/format.js";
+import { todayISO, fmtDate, isUrgent } from "../lib/format.js";
 import { sanitizeForSupabase } from "../lib/sanitizePayload.js";
 import {
   label as translate, CAR_STATUS_LABELS, STATUS_LABELS, DOCUMENT_TYPE_LABELS, PRIORITY_LABELS,
   ORIGIN_LABELS, documentStatusLabelEs, bestEffortStatusLabel,
 } from "../lib/labels.js";
-import { Header, FilterBar, StatusBadge, assigneesLabel, assigneeMatches, DeleteButton } from "./SharedUI.jsx";
+import { Header, FilterBar, StatusBadge, assigneesLabel, assigneeMatches, DeleteButton, UrgentFilterToggle } from "./SharedUI.jsx";
 import FlaggedDocuments from "./FlaggedDocuments.jsx";
 
 export default function AllWork({ cars, documents, properties, flaggedDocuments, setTab, initialFilters }) {
   const [filters, setFilters] = useState(initialFilters || {});
   const [search, setSearch] = useState("");
   const [month, setMonth] = useState("");
+  const [urgentOnly, setUrgentOnly] = useState(false);
 
   const items = useMemo(() => {
     const c = cars.rows.map((x) => ({
@@ -27,16 +28,18 @@ export default function AllWork({ cars, documents, properties, flaggedDocuments,
       status: x.status, statusLabel: translate(CAR_STATUS_LABELS, x.status), priority: x.priority, date: x.case_date, tab: "cars",
       extra: (x.registry_filing_number || x.pin) ? `Ingreso ${x.registry_filing_number || "—"} · PIN ${x.pin || "—"}` : "",
       registryNumber: x.registry_number, makeModel: x.make_model, registryFilingNumber: x.registry_filing_number, pin: x.pin,
+      reminderDate: x.reminder_date,
     }));
     const d = documents.rows.map((x) => ({
       key: "doc-" + x.id, rawId: x.id, origin: "Document", type: translate(DOCUMENT_TYPE_LABELS, x.document_type), client: x.client,
       assignees: x.assignees, status: null, statusLabel: documentStatusLabelEs(x), priority: x.priority, date: x.case_date, tab: "documents",
-      extra: "", documentType: x.document_type,
+      extra: "", documentType: x.document_type, reminderDate: x.reminder_date,
     }));
     const p = properties.rows.map((x) => ({
       key: "prop-" + x.id, rawId: x.id, origin: "Property", type: `Padrón ${x.registry_number || "—"}`, client: x.client,
       assignees: x.assignees, status: x.status, statusLabel: translate(STATUS_LABELS, x.status), priority: x.priority, date: x.case_date, tab: "properties",
       extra: (x.registry_filing_number || x.pin) ? `Ingreso ${x.registry_filing_number || "—"} · PIN ${x.pin || "—"}` : "",
+      reminderDate: x.reminder_date,
     }));
     const rank = { High: 0, Medium: 1, Low: 2, "": 3 };
     return [...c, ...d, ...p].sort((p1, q1) => (rank[p1.priority || ""] - rank[q1.priority || ""]) || (q1.date || "").localeCompare(p1.date || ""));
@@ -67,8 +70,10 @@ export default function AllWork({ cars, documents, properties, flaggedDocuments,
     (!filters.status || it.status === filters.status) &&
     (!filters.priority || it.priority === filters.priority) &&
     (!month || it.date?.slice(0, 7) === month) &&
-    (!search || `${it.client} ${it.type}`.toLowerCase().includes(search.toLowerCase()))
+    (!search || `${it.client} ${it.type}`.toLowerCase().includes(search.toLowerCase())) &&
+    (!urgentOnly || isUrgent(it.reminderDate, it.status))
   );
+  const urgentCount = items.filter((it) => isUrgent(it.reminderDate, it.status)).length;
 
   const allStatuses = [...new Set([...CAR_STATUSES, ...STATUSES, ...POWER_OF_ATTORNEY_STATUSES, ...PROBATE_STATUSES, ...SAS_STATUSES, ...SCAN_STATUSES, ...RECONSTRUCTION_STATUSES])];
 
@@ -89,6 +94,7 @@ export default function AllWork({ cars, documents, properties, flaggedDocuments,
           { key: "status", label: "Estado", values: allStatuses, labelFor: (v) => bestEffortStatusLabel(v) },
           { key: "priority", label: "Prioridad", values: PRIORITIES, labelFor: (v) => translate(PRIORITY_LABELS, v) },
         ]} />
+        <UrgentFilterToggle active={urgentOnly} onChange={setUrgentOnly} count={urgentCount} />
       </div>
 
       <div className="ec-card ec-scroll" style={{ overflowX: "auto" }}>

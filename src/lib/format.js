@@ -24,3 +24,12 @@ export function isOverdue(dateStr, status) {
   if (!dateStr || status === "Completed") return false;
   return new Date(dateStr) < new Date(todayISO());
 }
+
+/* Overdue, or due within the next 7 days — a superset of isOverdue(), used
+   by the "⚡ Urgentes · vence esta semana" quick filter. */
+export function isUrgent(dateStr, status) {
+  if (!dateStr || status === "Completed") return false;
+  const in7Days = new Date(todayISO());
+  in7Days.setDate(in7Days.getDate() + 7);
+  return new Date(dateStr) <= in7Days;
+}

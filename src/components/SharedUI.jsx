@@ -88,6 +88,46 @@ export function OverdueBadge({ label = "Vencido" }) {
   );
 }
 
+/* ============================== ROW HIGHLIGHT (global search "jump to") ============================== */
+/* Scrolls to and briefly pulses the row with DOM id `row-${highlightId}`.
+   Copies the id into local state instead of reading the prop directly so
+   the highlight fades on its own after a couple seconds rather than
+   persisting for as long as the caller keeps the prop set. Pair with
+   `id={`row-${row.id}`}` and `className={activeId === row.id ? "ec-card ec-highlight" : "ec-card"}`
+   on the row being highlighted. */
+export function useRowHighlight(highlightId) {
+  const [activeId, setActiveId] = useState(null);
+  useEffect(() => {
+    if (!highlightId) return;
+    setActiveId(highlightId);
+    const el = document.getElementById(`row-${highlightId}`);
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    const t = setTimeout(() => setActiveId(null), 2500);
+    return () => clearTimeout(t);
+  }, [highlightId]);
+  return activeId;
+}
+
+/* ============================== URGENT QUICK FILTER ============================== */
+/* "⚡ Urgentes · vence esta semana" toggle shared by Home and the tabular
+   views (Autos/Documentos/Inmuebles/Trabajos) — isolates overdue-or-due-
+   within-7-days items (see isUrgent() in lib/format.js) with one click. */
+export function UrgentFilterToggle({ active, onChange, count }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!active)}
+      className="ec-chip"
+      style={{
+        fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 5,
+        background: active ? C.wax : C.white, color: active ? C.white : C.wax, borderColor: C.wax,
+      }}
+    >
+      ⚡ Urgentes · vence esta semana{typeof count === "number" ? ` (${count})` : ""}
+    </button>
+  );
+}
+
 /* ============================== STATUS BADGE ============================== */
 export function statusColor(status) {
   switch (status) {

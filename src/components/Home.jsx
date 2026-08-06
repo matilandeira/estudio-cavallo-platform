@@ -2,23 +2,24 @@ import React, { useMemo, useState } from "react";
 import { Bell, Car, ClipboardList, FileText, AlertTriangle, ChevronRight, Plus } from "lucide-react";
 import { C } from "../lib/theme.jsx";
 import { STAFF, computeScore } from "../lib/constants.js";
-import { todayISO, startOfWeekISO, fmtDate, isOverdue } from "../lib/format.js";
+import { todayISO, startOfWeekISO, fmtDate, isOverdue, isUrgent } from "../lib/format.js";
 import { sanitizeForSupabase } from "../lib/sanitizePayload.js";
 import {
   isCarCompleted, isDocumentCompleted, isPropertyCompleted, carInEarlyStage, documentInEarlyStage,
   computeAutomaticTotals,
 } from "../lib/businessLogic.js";
 import { label as translate, CAR_STATUS_LABELS, DOCUMENT_TYPE_LABELS, CASE_TYPE_LABELS, ORIGIN_LABELS, documentStatusLabelEs } from "../lib/labels.js";
-import { AddPanel, Field, StatusBadge, Seal, assigneesLabel, Check, DeleteButton, OverdueBadge } from "./SharedUI.jsx";
+import { AddPanel, Field, StatusBadge, Seal, assigneesLabel, Check, DeleteButton, OverdueBadge, UrgentFilterToggle, useRowHighlight } from "./SharedUI.jsx";
 
 /* ============================== TAB: HOME ============================== */
 export default function Home({
   cars, documents, properties, dailyExcellenceLog,
   signingAppointments, documentsReadyToSchedule, propertiesNearSigning, flaggedDocuments,
-  setTab, setWorkInitialFilters, recurringTasks,
+  setTab, setWorkInitialFilters, recurringTasks, highlightId,
 }) {
   const today = todayISO();
   const carRows = cars.rows, docRows = documents.rows, propRows = properties.rows;
+  const [remindersUrgentOnly, setRemindersUrgentOnly] = useState(false);
 
   const kpis = useMemo(() => {
     const weekStart = startOfWeekISO();
@@ -38,12 +39,20 @@ export default function Home({
       ...carRows.filter(carInEarlyStage).map((c) => ({ key: "car-" + c.id, client: c.client, type: "Auto", status: c.status, statusLabel: translate(CAR_STATUS_LABELS, c.status), assignee: assigneesLabel(c.assignees), registryNumber: c.registry_number, makeModel: c.make_model, tab: "cars" })),
       ...docRows.filter(documentInEarlyStage).map((d) => ({ key: "doc-" + d.id, client: d.client, type: translate(DOCUMENT_TYPE_LABELS, d.document_type), status: null, statusLabel: documentStatusLabelEs(d), assignee: assigneesLabel(d.assignees), registryNumber: "", makeModel: "", tab: "documents" })),
     ].sort((p, q) => p.client?.localeCompare(q.client || "") || 0);
+    // Base reminders: due today or overdue (unchanged default view). The "⚡
+    // Urgentes" toggle below swaps this for remindersWeek, which also pulls
+    // in anything due in the next 7 days — see isUrgent() in lib/format.js.
     const reminders = [
-      ...carRows.filter((c) => c.reminder_date && c.reminder_date <= today).map((c) => ({ key: "car-" + c.id, client: c.client, origin: "Auto", detail: c.make_model || translate(CASE_TYPE_LABELS, c.case_type), date: c.reminder_date, tab: "cars" })),
-      ...docRows.filter((d) => d.reminder_date && d.reminder_date <= today).map((d) => ({ key: "doc-" + d.id, client: d.client, origin: "Documento", detail: translate(DOCUMENT_TYPE_LABELS, d.document_type), date: d.reminder_date, tab: "documents" })),
-      ...propRows.filter((p) => p.reminder_date && p.reminder_date <= today).map((p) => ({ key: "prop-" + p.id, client: p.client, origin: "Inmueble", detail: `Padrón ${p.registry_number || "—"}`, date: p.reminder_date, tab: "properties" })),
+      ...carRows.filter((c) => c.reminder_date && c.reminder_date <= today).map((c) => ({ key: "car-" + c.id, client: c.client, origin: "Auto", detail: c.make_model || translate(CASE_TYPE_LABELS, c.case_type), date: c.reminder_date, tab: "cars", rawId: c.id })),
+      ...docRows.filter((d) => d.reminder_date && d.reminder_date <= today).map((d) => ({ key: "doc-" + d.id, client: d.client, origin: "Documento", detail: translate(DOCUMENT_TYPE_LABELS, d.document_type), date: d.reminder_date, tab: "documents", rawId: d.id })),
+      ...propRows.filter((p) => p.reminder_date && p.reminder_date <= today).map((p) => ({ key: "prop-" + p.id, client: p.client, origin: "Inmueble", detail: `Padrón ${p.registry_number || "—"}`, date: p.reminder_date, tab: "properties", rawId: p.id })),
     ].sort((p, q) => (p.date || "").localeCompare(q.date || ""));
-    return { carsThisWeek, carsCompletedThisWeek, carsPending, docsPending, propertiesActive, activeWork, carsReadyToSign, docsForReview, overdue, inProgressItems, reminders };
+    const remindersWeek = [
+      ...carRows.filter((c) => isUrgent(c.reminder_date, c.status)).map((c) => ({ key: "car-" + c.id, client: c.client, origin: "Auto", detail: c.make_model || translate(CASE_TYPE_LABELS, c.case_type), date: c.reminder_date, tab: "cars", rawId: c.id })),
+      ...docRows.filter((d) => isUrgent(d.reminder_date, d.status)).map((d) => ({ key: "doc-" + d.id, client: d.client, origin: "Documento", detail: translate(DOCUMENT_TYPE_LABELS, d.document_type), date: d.reminder_date, tab: "documents", rawId: d.id })),
+      ...propRows.filter((p) => isUrgent(p.reminder_date, p.status)).map((p) => ({ key: "prop-" + p.id, client: p.client, origin: "Inmueble", detail: `Padrón ${p.registry_number || "—"}`, date: p.reminder_date, tab: "properties", rawId: p.id })),
+    ].sort((p, q) => (p.date || "").localeCompare(q.date || ""));
+    return { carsThisWeek, carsCompletedThisWeek, carsPending, docsPending, propertiesActive, activeWork, carsReadyToSign, docsForReview, overdue, inProgressItems, reminders, remindersWeek };
   }, [carRows, docRows, propRows, today]);
 
   const highPriorityCount = carRows.filter((c) => c.priority === "High").length + docRows.filter((d) => d.priority === "High").length + propRows.filter((p) => p.priority === "High").length;
@@ -77,7 +86,7 @@ export default function Home({
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18, marginBottom: 18, alignItems: "start" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
           <div className="ec-card" style={{ padding: "6px 0" }}>
-            <SigningAgenda signingAppointments={signingAppointments} />
+            <SigningAgenda signingAppointments={signingAppointments} highlightId={highlightId} />
           </div>
           <div className="ec-card" style={{ padding: "6px 0" }}>
             <ReadyToSchedule documentsReadyToSchedule={documentsReadyToSchedule} signingAppointments={signingAppointments} />
@@ -130,7 +139,13 @@ export default function Home({
           </div>
 
           <div className="ec-card" style={{ padding: "6px 0" }}>
-            <UnifiedReminders reminders={kpis.reminders} setTab={setTab} />
+            <UnifiedReminders
+              reminders={remindersUrgentOnly ? kpis.remindersWeek : kpis.reminders}
+              setTab={setTab}
+              urgentOnly={remindersUrgentOnly}
+              setUrgentOnly={setRemindersUrgentOnly}
+              weekCount={kpis.remindersWeek.length}
+            />
           </div>
         </div>
       </div>
@@ -153,14 +168,19 @@ export default function Home({
   );
 }
 
-/* Reminders due today or overdue, combining Cars + Documents + Properties in one place */
-function UnifiedReminders({ reminders, setTab }) {
+/* Reminders due today or overdue by default; the "⚡ Urgentes" toggle swaps
+   in the wider 7-day window (see kpis.remindersWeek in Home() above),
+   combining Cars + Documents + Properties in one place either way. */
+function UnifiedReminders({ reminders, setTab, urgentOnly, setUrgentOnly, weekCount }) {
   const today = todayISO();
   return (
     <div>
-      <div style={{ padding: "10px 16px", borderBottom: `1.5px solid ${C.ink}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ padding: "10px 16px", borderBottom: `1.5px solid ${C.ink}`, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
         <span className="ec-serif" style={{ fontWeight: 700, fontSize: 14.5, display: "flex", alignItems: "center", gap: 6 }}><Bell size={15} color={C.brass} /> Recordatorios</span>
-        <span style={{ fontSize: 12, color: C.muted }}>{reminders.length}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <UrgentFilterToggle active={urgentOnly} onChange={setUrgentOnly} count={urgentOnly ? undefined : weekCount} />
+          <span style={{ fontSize: 12, color: C.muted }}>{reminders.length}</span>
+        </div>
       </div>
       <div>
         {reminders.length === 0 && <div style={{ padding: "20px 16px", color: C.muted, fontSize: 13, textAlign: "center" }}>No hay recordatorios pendientes.</div>}
@@ -182,11 +202,12 @@ function UnifiedReminders({ reminders, setTab }) {
   );
 }
 
-function SigningAgenda({ signingAppointments }) {
+function SigningAgenda({ signingAppointments, highlightId }) {
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
   const blank = () => ({ appointment_date: todayISO(), appointment_time: "10:00", origin: "Car", client: "", description: "", notes: "" });
   const [form, setForm] = useState(blank());
+  const activeHighlight = useRowHighlight(highlightId);
 
   const save = async () => {
     // appointment_date is NOT NULL with no sensible default (unlike case_date
@@ -247,7 +268,7 @@ function SigningAgenda({ signingAppointments }) {
               {g.appointment_date === today ? "Hoy" : weekdayLong(g.appointment_date)}
             </div>
             {g.items.map((a) => (
-              <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "6px 0", fontSize: 13 }}>
+              <div key={a.id} id={`row-${a.id}`} className={activeHighlight === a.id ? "ec-highlight" : ""} style={{ display: "flex", alignItems: "center", gap: 14, padding: "6px 0", fontSize: 13, borderRadius: 4 }}>
                 <span className="ec-mono" style={{ width: 48, color: C.ink, fontWeight: 600 }}>{(a.appointment_time || "—").slice(0, 5)}</span>
                 <span style={{ width: 130, flexShrink: 0 }}>{a.client || "—"}</span>
                 <span className="ec-badge" style={{ background: C.paper2, color: a.origin === "Property" ? C.bottle : C.brass, flexShrink: 0 }}>{translate(ORIGIN_LABELS, a.origin) || "Auto"}</span>

@@ -2,11 +2,11 @@ import React, { useEffect, useRef, useState } from "react";
 import { Search } from "lucide-react";
 import { C } from "../lib/theme.jsx";
 import { STAFF, PROPERTY_TYPES, PROPERTY_STAGES, STATUSES, NEXT_ACTION_OWNERS, byPriority } from "../lib/constants.js";
-import { todayISO } from "../lib/format.js";
+import { todayISO, isUrgent } from "../lib/format.js";
 import { sanitizeForSupabase } from "../lib/sanitizePayload.js";
 import { isPropertyCompleted } from "../lib/businessLogic.js";
 import { label as translate, PROPERTY_TYPE_LABELS, PROPERTY_STAGE_LABELS, STATUS_LABELS } from "../lib/labels.js";
-import { Header, AddPanel, Field, FilterBar, AssigneesPicker, PriorityPicker, Check, TriStatus, TriLegend, assigneeMatches, DeleteButton, OverdueBadge } from "./SharedUI.jsx";
+import { Header, AddPanel, Field, FilterBar, AssigneesPicker, PriorityPicker, Check, TriStatus, TriLegend, assigneeMatches, DeleteButton, OverdueBadge, UrgentFilterToggle, useRowHighlight } from "./SharedUI.jsx";
 
 const blankProperty = () => ({
   case_date: todayISO(), property_type: PROPERTY_TYPES[0], client: "", registry_number: "", assignees: ["Dahiana"],
@@ -31,19 +31,23 @@ const checklistFor = (propertyType) => (propertyType === "Rural" ? [...BASE_CHEC
 const isLateStage = (stage) => !["Preparing Agreement", "Agreement Approved", "Ready to Sign", "Agreement Signed", "Promise of Sale", "Sale Deed"].includes(stage);
 const isRegistryOnlyStage = (stage) => stage === "Documentation Received";
 
-export default function Properties({ properties, documentsReadyToSchedule, simpleMode }) {
+export default function Properties({ properties, documentsReadyToSchedule, simpleMode, highlightId }) {
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState({});
+  const [urgentOnly, setUrgentOnly] = useState(false);
   const [form, setForm] = useState(blankProperty());
+  const activeHighlight = useRowHighlight(highlightId);
 
   const filtered = properties.rows.filter((i) =>
     !isPropertyCompleted(i) &&
     (!search || `${i.client} ${i.registry_number}`.toLowerCase().includes(search.toLowerCase())) &&
     (!filters.assignee || assigneeMatches(i.assignees, filters.assignee)) &&
-    (!filters.status || i.status === filters.status)
+    (!filters.status || i.status === filters.status) &&
+    (!urgentOnly || isUrgent(i.reminder_date, i.status))
   ).sort(byPriority);
+  const urgentCount = properties.rows.filter((i) => !isPropertyCompleted(i) && isUrgent(i.reminder_date, i.status)).length;
 
   const save = async () => {
     setSaving(true);
@@ -155,6 +159,7 @@ export default function Properties({ properties, documentsReadyToSchedule, simpl
           { key: "assignee", label: "Responsable", values: STAFF },
           { key: "status", label: "Estado", values: STATUSES, labelFor: (v) => translate(STATUS_LABELS, v) },
         ]} />
+        <UrgentFilterToggle active={urgentOnly} onChange={setUrgentOnly} count={urgentCount} />
       </div>
 
       <TriLegend />
@@ -165,7 +170,7 @@ export default function Properties({ properties, documentsReadyToSchedule, simpl
           const done = keys.filter(([k]) => i[k]).length;
           const overdue = i.reminder_date && i.status !== "Completed" && i.reminder_date < todayISO();
           return (
-            <div key={i.id} className="ec-card" style={{ padding: 14 }}>
+            <div key={i.id} id={`row-${i.id}`} className={activeHighlight === i.id ? "ec-card ec-highlight" : "ec-card"} style={{ padding: 14 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10 }}>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", flex: 1, minWidth: 260 }}>
                   <input className="ec-input" style={{ width: 150, fontWeight: 700 }} placeholder="Cliente" value={i.client || ""} onChange={(e) => update(i.id, { client: e.target.value }, { debounce: true })} />

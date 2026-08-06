@@ -4,7 +4,7 @@ import {
   STAFF, DOCUMENT_TYPES, PROBATE_STATUSES, POWER_OF_ATTORNEY_STATUSES, SCAN_STATUSES,
   RECONSTRUCTION_STATUSES, SAS_STATUSES, STATUSES, NEXT_ACTION_OWNERS, byPriority,
 } from "../lib/constants.js";
-import { todayISO } from "../lib/format.js";
+import { todayISO, isUrgent } from "../lib/format.js";
 import { sanitizeForSupabase } from "../lib/sanitizePayload.js";
 import {
   isDocumentCompleted, isPendingLike, isSimplifiedDocument,
@@ -14,7 +14,7 @@ import {
   label as translate, DOCUMENT_TYPE_LABELS, PROBATE_STATUS_LABELS, POA_STATUS_LABELS, SCAN_STATUS_LABELS,
   RECONSTRUCTION_STATUS_LABELS, SAS_STATUS_LABELS, STATUS_LABELS, NEXT_ACTION_OWNER_LABELS,
 } from "../lib/labels.js";
-import { Header, AddPanel, Field, FilterBar, AssigneesPicker, PriorityPicker, Check, assigneeMatches, DeleteButton, OverdueBadge } from "./SharedUI.jsx";
+import { Header, AddPanel, Field, FilterBar, AssigneesPicker, PriorityPicker, Check, assigneeMatches, DeleteButton, OverdueBadge, UrgentFilterToggle, useRowHighlight } from "./SharedUI.jsx";
 
 const blankDocument = () => ({
   case_date: todayISO(), client: "", phone: "", document_type: DOCUMENT_TYPES[0], reference: "",
@@ -26,15 +26,18 @@ const blankDocument = () => ({
   notes: "", completed_at: null,
 });
 
-export default function Documents({ documents, simpleMode }) {
+export default function Documents({ documents, simpleMode, highlightId }) {
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
   const [filters, setFilters] = useState({});
+  const [urgentOnly, setUrgentOnly] = useState(false);
   const [form, setForm] = useState(blankDocument());
+  const activeHighlight = useRowHighlight(highlightId);
 
   const filtered = documents.rows
-    .filter((d) => !isDocumentCompleted(d) && (!filters.status || d.status === filters.status) && (!filters.assignee || assigneeMatches(d.assignees, filters.assignee)) && (!filters.document_type || d.document_type === filters.document_type))
+    .filter((d) => !isDocumentCompleted(d) && (!filters.status || d.status === filters.status) && (!filters.assignee || assigneeMatches(d.assignees, filters.assignee)) && (!filters.document_type || d.document_type === filters.document_type) && (!urgentOnly || isUrgent(d.reminder_date, d.status)))
     .sort(byPriority);
+  const urgentCount = documents.rows.filter((d) => !isDocumentCompleted(d) && isUrgent(d.reminder_date, d.status)).length;
 
   const save = async () => {
     setSaving(true);
@@ -122,10 +125,13 @@ export default function Documents({ documents, simpleMode }) {
         <div style={{ marginTop: 12 }}><button className="ec-btn" onClick={save} disabled={saving}>{saving ? "Guardando…" : "Guardar documento"}</button></div>
       </AddPanel>
 
-      <FilterBar filters={filters} setFilters={setFilters} options={[
-        { key: "document_type", label: "Tipo", values: DOCUMENT_TYPES, labelFor: (v) => translate(DOCUMENT_TYPE_LABELS, v) },
-        { key: "assignee", label: "Responsable", values: STAFF },
-      ]} />
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <FilterBar filters={filters} setFilters={setFilters} options={[
+          { key: "document_type", label: "Tipo", values: DOCUMENT_TYPES, labelFor: (v) => translate(DOCUMENT_TYPE_LABELS, v) },
+          { key: "assignee", label: "Responsable", values: STAFF },
+        ]} />
+        <UrgentFilterToggle active={urgentOnly} onChange={setUrgentOnly} count={urgentCount} />
+      </div>
 
       <div style={{ display: "grid", gap: 10 }}>
         {filtered.length === 0 && <div className="ec-card" style={{ padding: 24, textAlign: "center", color: C.muted }}>No hay documentos registrados todavía.</div>}
@@ -134,7 +140,7 @@ export default function Documents({ documents, simpleMode }) {
           const pending = isPendingLike(d);
           const dueReminder = pending && d.reminder_date && d.reminder_date <= todayISO();
           return (
-            <div key={d.id} className="ec-card" style={{ padding: 14 }}>
+            <div key={d.id} id={`row-${d.id}`} className={activeHighlight === d.id ? "ec-card ec-highlight" : "ec-card"} style={{ padding: 14 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10 }}>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", flex: 1, minWidth: 220 }}>
                   <input className="ec-input" style={{ width: 160, fontWeight: 700 }} placeholder="Cliente" value={d.client || ""} onChange={(e) => update(d.id, { client: e.target.value }, { debounce: true })} />

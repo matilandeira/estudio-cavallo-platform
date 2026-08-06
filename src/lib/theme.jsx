@@ -57,6 +57,9 @@ export function StyleSheet() {
       .ec-spin { animation: ec-spin 1s linear infinite; }
       .ec-toast { position: fixed; bottom: 20px; right: 20px; z-index: 200; max-width: 360px;
                  padding: 12px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; box-shadow: 0 6px 20px rgba(0,0,0,.18); }
+      @keyframes ec-highlight-pulse { 0%{ box-shadow: 0 0 0 4px rgba(169,129,63,.55); } 100%{ box-shadow: 0 0 0 0 rgba(169,129,63,0); } }
+      .ec-highlight { animation: ec-highlight-pulse 2.2s ease-out; }
+      .ec-search-result:hover, .ec-search-result:focus-visible { background: ${C.paper3}; outline: none; }
     `}</style>
   );
 }

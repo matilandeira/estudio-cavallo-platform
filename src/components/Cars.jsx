@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import { C } from "../lib/theme.jsx";
 import { STAFF, CAR_CASE_TYPES, CAR_STATUSES, byPriority } from "../lib/constants.js";
-import { todayISO } from "../lib/format.js";
+import { todayISO, isUrgent } from "../lib/format.js";
 import { sanitizeForSupabase } from "../lib/sanitizePayload.js";
 import { isCarCompleted, whatsappLinkCarDocsReady, whatsappLinkCoordinateSigning, whatsappLinkRequestDocumentation } from "../lib/businessLogic.js";
 import { label as translate, CASE_TYPE_LABELS, CAR_STATUS_LABELS } from "../lib/labels.js";
-import { Header, AddPanel, Field, FilterBar, AssigneesPicker, PriorityPicker, TriStatus, TriLegend, assigneeMatches, DeleteButton, OverdueBadge } from "./SharedUI.jsx";
+import { Header, AddPanel, Field, FilterBar, AssigneesPicker, PriorityPicker, TriStatus, TriLegend, assigneeMatches, DeleteButton, OverdueBadge, UrgentFilterToggle, useRowHighlight } from "./SharedUI.jsx";
 
 const blankCar = () => ({
   case_date: todayISO(), client: "", phone: "", financed: false, plate_number: "", registry_number: "", make_model: "",
@@ -19,15 +19,18 @@ const blankCar = () => ({
 });
 const allGreen = (c) => [c.lien_status, c.seizure_status, c.debt_status, c.sucive_certificate_status, c.required_plates_status, c.document_drafted_status, c.paid_status].every((v) => v === "ok");
 
-export default function Cars({ cars, documentsReadyToSchedule, simpleMode }) {
+export default function Cars({ cars, documentsReadyToSchedule, simpleMode, highlightId }) {
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
   const [filters, setFilters] = useState({});
+  const [urgentOnly, setUrgentOnly] = useState(false);
   const [form, setForm] = useState(blankCar());
+  const activeHighlight = useRowHighlight(highlightId);
 
   const filtered = cars.rows
-    .filter((c) => !isCarCompleted(c) && (!filters.status || c.status === filters.status) && (!filters.assignee || assigneeMatches(c.assignees, filters.assignee) || assigneeMatches(c.notarization_assignees, filters.assignee)))
+    .filter((c) => !isCarCompleted(c) && (!filters.status || c.status === filters.status) && (!filters.assignee || assigneeMatches(c.assignees, filters.assignee) || assigneeMatches(c.notarization_assignees, filters.assignee)) && (!urgentOnly || isUrgent(c.reminder_date, c.status)))
     .sort(byPriority);
+  const urgentCount = cars.rows.filter((c) => !isCarCompleted(c) && isUrgent(c.reminder_date, c.status)).length;
 
   const save = async () => {
     setSaving(true);
@@ -135,10 +138,13 @@ export default function Cars({ cars, documentsReadyToSchedule, simpleMode }) {
         <div style={{ marginTop: 12 }}><button className="ec-btn" onClick={save} disabled={saving}>{saving ? "Guardando…" : "Guardar trámite"}</button></div>
       </AddPanel>
 
-      <FilterBar filters={filters} setFilters={setFilters} options={[
-        { key: "status", label: "Estado", values: CAR_STATUSES.filter((s) => s !== "Notarized"), labelFor: (v) => translate(CAR_STATUS_LABELS, v) },
-        { key: "assignee", label: "Responsable", values: STAFF },
-      ]} />
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <FilterBar filters={filters} setFilters={setFilters} options={[
+          { key: "status", label: "Estado", values: CAR_STATUSES.filter((s) => s !== "Notarized"), labelFor: (v) => translate(CAR_STATUS_LABELS, v) },
+          { key: "assignee", label: "Responsable", values: STAFF },
+        ]} />
+        <UrgentFilterToggle active={urgentOnly} onChange={setUrgentOnly} count={urgentCount} />
+      </div>
 
       {!simpleMode && <TriLegend />}
       <div style={{ display: "grid", gap: 10 }}>
@@ -146,7 +152,7 @@ export default function Cars({ cars, documentsReadyToSchedule, simpleMode }) {
         {filtered.map((a) => {
           const dueReminder = a.status === "Pending" && a.reminder_date && a.reminder_date <= todayISO();
           return (
-          <div key={a.id} className="ec-card" style={{ padding: 14 }}>
+          <div key={a.id} id={`row-${a.id}`} className={activeHighlight === a.id ? "ec-card ec-highlight" : "ec-card"} style={{ padding: 14 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10 }}>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", flex: 1, minWidth: 260 }}>
                 <input className="ec-input" style={{ width: 150, fontWeight: 700 }} placeholder="Cliente" value={a.client || ""} onChange={(e) => update(a.id, { client: e.target.value }, { debounce: true })} />
