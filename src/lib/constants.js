@@ -10,7 +10,12 @@ export const byPriority = (a, b) => PRIORITY_RANK[a.priority || ""] - PRIORITY_R
 
 /* ============================== CARS ============================== */
 export const CAR_CASE_TYPES = ["Sale", "Power of Attorney", "Sub-power of Attorney", "Trade-in", "Other"];
-export const CAR_STATUSES = ["Pending", "In Progress", "Returned from Registry", "Ready to Sign", "Ready to Notarize", "Notarized", "Registering", "Completed"];
+/* Simplified to 3 states by design — see normalizeCarStatus() in
+   businessLogic.js for how the retired intermediate statuses ('In
+   Progress', 'Returned from Registry', 'Ready to Notarize', 'Notarized',
+   'Registering') still map onto these for any car that already has one of
+   those values stored. */
+export const CAR_STATUSES = ["Pending", "Ready to Sign", "Completed"];
 
 /* ============================== DOCUMENTS ============================== */
 export const DOCUMENT_TYPES = [
@@ -113,13 +118,13 @@ export const PROCEDURES = [
   {
     id: "cars", title: "Automotores", icon: Car, steps: [
       "Solicitar: foto de títulos (o factura si nunca tuvo), foto de libreta, cédula del titular registral y cónyuge si está casado, si está divorciado con quién, SOA, Computest (Montevideo, +5 años). Personas jurídicas además: CUD, BPS, certificado notarial de constitución, administración, inscripción en DGI y comunicación al BCU. Se puede enviar el pedido por WhatsApp con el botón del sistema (estado 'Pendiente').",
-      "Armar sobre y hacer estudio de títulos por 6 años: estado civil del vendedor, tracto sucesivo, carta de pago, cláusula de lectura y ratificación, fechas, cartas poder completas. Pasar el auto a 'Trabajando en él'.",
+      "Armar sobre y hacer estudio de títulos por 6 años: estado civil del vendedor, tracto sucesivo, carta de pago, cláusula de lectura y ratificación, fechas, cartas poder completas. El auto queda en 'Pendiente' durante todo este trabajo.",
       "Consultar deuda sucive (más convenio), pedir libre de prenda y libre de embargo (semáforo: rojo=no pedido, amarillo=pedido, verde=llegó/OK). Ídem Cert. Sucive y Matrículas requeridas.",
-      "Cuando llega la documentación desde el registro, pasar el auto a 'Llegó del registro' — el sistema habilita un botón de WhatsApp para avisar (mensaje distinto si es financiado). Este estado ya cuenta como finalizado para Excelencia Operativa.",
+      "Cuando llega la documentación desde el registro, avisar por WhatsApp con el botón del sistema (mensaje distinto si es financiado) — no hace falta cambiar el estado, sigue en 'Pendiente' hasta que los 7 semáforos estén en verde.",
       "Elaborar documento y marcar 'Doc. elaborado' y 'Cobrado' en verde cuando corresponda. Con los 7 semáforos en verde, el auto pasa solo a 'Pronto para firma' y aparece en 'Documentos prontos para agendar' en Inicio.",
-      "Coordinar la firma (botón de WhatsApp disponible en 'Pronto para firma'), pasar a 'Para protocolizar' y protocolizar.",
-      "Solo compraventas se inscriben en el registro: al pasar a 'Inscribiéndose', cargar Número de ingreso y PIN (se copian del Excel de títulos en trámite) — esto suma a Excelencia Operativa en Protocolizaciones.",
-      "Cerrar el trámite en estado 'Protocolizado' o 'Finalizado' según corresponda. Los poderes de auto (tipo Poder) también sirven con el semáforo 'Cobrado' en verde, sin pasar por el registro.",
+      "Coordinar la firma (botón de WhatsApp disponible en 'Pronto para firma') y protocolizar.",
+      "Solo compraventas se inscriben en el registro: cargar Número de ingreso y PIN cuando estén disponibles (se copian del Excel de títulos en trámite) — esto suma a Excelencia Operativa en Protocolizaciones.",
+      "Cerrar el trámite pasándolo a 'Finalizado'. Los poderes de auto (tipo Poder) también sirven con el semáforo 'Cobrado' en verde, sin pasar por el registro.",
       "Controles finales en títulos: última procedencia, primera inscripción (sucive + libreta autenticada), divorcio/separación de bienes, SOA, cambio de padrón, BPS, personería jurídica, poderes, voto.",
     ],
   },

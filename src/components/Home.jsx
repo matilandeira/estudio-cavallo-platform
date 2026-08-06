@@ -6,9 +6,9 @@ import { todayISO, startOfWeekISO, fmtDate, isOverdue, isUrgent } from "../lib/f
 import { sanitizeForSupabase } from "../lib/sanitizePayload.js";
 import {
   isCarCompleted, isDocumentCompleted, isPropertyCompleted, carInEarlyStage, documentInEarlyStage,
-  computeAutomaticTotals,
+  normalizeCarStatus, computeAutomaticTotals,
 } from "../lib/businessLogic.js";
-import { label as translate, CAR_STATUS_LABELS, DOCUMENT_TYPE_LABELS, CASE_TYPE_LABELS, ORIGIN_LABELS, documentStatusLabelEs } from "../lib/labels.js";
+import { label as translate, DOCUMENT_TYPE_LABELS, CASE_TYPE_LABELS, ORIGIN_LABELS, documentStatusLabelEs, carStatusLabelEs } from "../lib/labels.js";
 import { AddPanel, Field, StatusBadge, Seal, assigneesLabel, Check, DeleteButton, OverdueBadge, UrgentFilterToggle, useRowHighlight } from "./SharedUI.jsx";
 import TourButton from "./TourButton.jsx";
 import { homeTourSteps } from "../lib/tours.js";
@@ -31,14 +31,14 @@ export default function Home({
     const docsPending = docRows.filter((d) => !isDocumentCompleted(d)).length;
     const propertiesActive = propRows.filter((p) => !isPropertyCompleted(p)).length;
     const activeWork = carsPending + docsPending + propertiesActive;
-    const carsReadyToSign = carRows.filter((c) => c.status === "Ready to Sign").length;
+    const carsReadyToSign = carRows.filter((c) => normalizeCarStatus(c.status) === "Ready to Sign").length;
     const docsForReview = docRows.filter((d) => d.status === "For Review").length;
     const overdue = [
       ...docRows.filter((d) => isOverdue(d.reminder_date, d.status)),
       ...propRows.filter((p) => isOverdue(p.reminder_date, p.status)),
     ].length;
     const inProgressItems = [
-      ...carRows.filter(carInEarlyStage).map((c) => ({ key: "car-" + c.id, client: c.client, type: "Auto", status: c.status, statusLabel: translate(CAR_STATUS_LABELS, c.status), assignee: assigneesLabel(c.assignees), registryNumber: c.registry_number, makeModel: c.make_model, tab: "cars" })),
+      ...carRows.filter(carInEarlyStage).map((c) => ({ key: "car-" + c.id, client: c.client, type: "Auto", status: normalizeCarStatus(c.status), statusLabel: carStatusLabelEs(c), assignee: assigneesLabel(c.assignees), registryNumber: c.registry_number, makeModel: c.make_model, tab: "cars" })),
       ...docRows.filter(documentInEarlyStage).map((d) => ({ key: "doc-" + d.id, client: d.client, type: translate(DOCUMENT_TYPE_LABELS, d.document_type), status: null, statusLabel: documentStatusLabelEs(d), assignee: assigneesLabel(d.assignees), registryNumber: "", makeModel: "", tab: "documents" })),
     ].sort((p, q) => p.client?.localeCompare(q.client || "") || 0);
     // Base reminders: due today or overdue (unchanged default view). The "⚡
@@ -50,7 +50,7 @@ export default function Home({
       ...propRows.filter((p) => p.reminder_date && p.reminder_date <= today).map((p) => ({ key: "prop-" + p.id, client: p.client, origin: "Inmueble", detail: `Padrón ${p.registry_number || "—"}`, date: p.reminder_date, tab: "properties", rawId: p.id })),
     ].sort((p, q) => (p.date || "").localeCompare(q.date || ""));
     const remindersWeek = [
-      ...carRows.filter((c) => isUrgent(c.reminder_date, c.status)).map((c) => ({ key: "car-" + c.id, client: c.client, origin: "Auto", detail: c.make_model || translate(CASE_TYPE_LABELS, c.case_type), date: c.reminder_date, tab: "cars", rawId: c.id })),
+      ...carRows.filter((c) => isUrgent(c.reminder_date, normalizeCarStatus(c.status))).map((c) => ({ key: "car-" + c.id, client: c.client, origin: "Auto", detail: c.make_model || translate(CASE_TYPE_LABELS, c.case_type), date: c.reminder_date, tab: "cars", rawId: c.id })),
       ...docRows.filter((d) => isUrgent(d.reminder_date, d.status)).map((d) => ({ key: "doc-" + d.id, client: d.client, origin: "Documento", detail: translate(DOCUMENT_TYPE_LABELS, d.document_type), date: d.reminder_date, tab: "documents", rawId: d.id })),
       ...propRows.filter((p) => isUrgent(p.reminder_date, p.status)).map((p) => ({ key: "prop-" + p.id, client: p.client, origin: "Inmueble", detail: `Padrón ${p.registry_number || "—"}`, date: p.reminder_date, tab: "properties", rawId: p.id })),
     ].sort((p, q) => (p.date || "").localeCompare(q.date || ""));

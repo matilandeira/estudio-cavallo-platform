@@ -3,7 +3,7 @@
    Supabase and compared throughout businessLogic.js — this module only maps
    them to the Spanish text shown to users. Never used on free-text fields
    (client names, notes, etc.), only on controlled-vocabulary values. */
-import { isSimplifiedDocument } from "./businessLogic.js";
+import { isSimplifiedDocument, normalizeCarStatus } from "./businessLogic.js";
 import { isSAS, isScanning, isReconstruction } from "./constants.js";
 
 export const label = (map, value) => (value ? (map[value] ?? value) : value);
@@ -15,10 +15,12 @@ export const CASE_TYPE_LABELS = {
   "Trade-in": "Permuta", Other: "Otro",
 };
 
+/* Only the 3 statuses a car can be set to going forward — see CAR_STATUSES
+   in constants.js and normalizeCarStatus() in businessLogic.js. Look up
+   through carStatusLabelEs(car) below rather than this map directly if the
+   car might still have one of the retired statuses stored (older rows). */
 export const CAR_STATUS_LABELS = {
-  Pending: "Pendiente", "In Progress": "Trabajando en él", "Returned from Registry": "Llegó del registro",
-  "Ready to Sign": "Pronto para firma", "Ready to Notarize": "Para protocolizar", Notarized: "Protocolizado",
-  Registering: "Inscribiéndose", Completed: "Finalizado",
+  Pending: "Pendiente", "Ready to Sign": "Pronto para firma", Completed: "Finalizado",
 };
 
 export const STATUS_LABELS = {
@@ -84,6 +86,14 @@ export const ORIGIN_LABELS = { Car: "Auto", Document: "Documento", Property: "In
 export const FREQ_LABELS = { daily: "Diaria", weekly: "Semanal", monthly: "Mensual" };
 
 export const LEVEL_LABELS = { Gold: "Oro", Silver: "Plata", Bronze: "Bronce" };
+
+/* Spanish status label for a car — normalizes first (see
+   normalizeCarStatus() in businessLogic.js) so an older row still carrying
+   one of the 5 retired statuses displays as one of the 3 current ones
+   instead of falling back to raw, untranslated English text. */
+export function carStatusLabelEs(car) {
+  return label(CAR_STATUS_LABELS, normalizeCarStatus(car.status));
+}
 
 /* Status label for a document, honoring whichever specific status field
    applies to its type — mirrors businessLogic.documentStatusLabel() but

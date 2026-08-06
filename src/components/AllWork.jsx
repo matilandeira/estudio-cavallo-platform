@@ -7,9 +7,10 @@ import {
 } from "../lib/constants.js";
 import { todayISO, fmtDate, isUrgent } from "../lib/format.js";
 import { sanitizeForSupabase } from "../lib/sanitizePayload.js";
+import { normalizeCarStatus } from "../lib/businessLogic.js";
 import {
-  label as translate, CAR_STATUS_LABELS, STATUS_LABELS, DOCUMENT_TYPE_LABELS, PRIORITY_LABELS,
-  ORIGIN_LABELS, documentStatusLabelEs, bestEffortStatusLabel,
+  label as translate, STATUS_LABELS, DOCUMENT_TYPE_LABELS, PRIORITY_LABELS,
+  ORIGIN_LABELS, documentStatusLabelEs, carStatusLabelEs, bestEffortStatusLabel,
 } from "../lib/labels.js";
 import { Header, FilterBar, StatusBadge, assigneesLabel, assigneeMatches, DeleteButton, UrgentFilterToggle } from "./SharedUI.jsx";
 import TourButton from "./TourButton.jsx";
@@ -27,7 +28,7 @@ export default function AllWork({ cars, documents, properties, flaggedDocuments,
       key: "car-" + x.id, rawId: x.id, origin: "Car",
       type: `${x.make_model || x.case_type || "—"}${x.registry_number ? " · Padrón " + x.registry_number : ""}`,
       client: x.client, assignees: [...new Set([...(x.assignees || []), ...(x.notarization_assignees || [])])],
-      status: x.status, statusLabel: translate(CAR_STATUS_LABELS, x.status), priority: x.priority, date: x.case_date, tab: "cars",
+      status: normalizeCarStatus(x.status), statusLabel: carStatusLabelEs(x), priority: x.priority, date: x.case_date, tab: "cars",
       extra: (x.registry_filing_number || x.pin) ? `Ingreso ${x.registry_filing_number || "—"} · PIN ${x.pin || "—"}` : "",
       registryNumber: x.registry_number, makeModel: x.make_model, registryFilingNumber: x.registry_filing_number, pin: x.pin,
       reminderDate: x.reminder_date,

@@ -1,10 +1,31 @@
 import { isSimplified, isSAS, isScanning, isReconstruction, isSpecialType, STATUSES, PROBATE_STATUSES, POWER_OF_ATTORNEY_STATUSES, SAS_STATUSES, SCAN_STATUSES, RECONSTRUCTION_STATUSES } from "./constants.js";
 import { monthsElapsed } from "./format.js";
 
+/* Cars only ever have 3 statuses now (see CAR_STATUSES in constants.js):
+   Pending, Ready to Sign, Completed. Older rows may still carry one of the
+   5 retired intermediate statuses from before this simplification ('In
+   Progress', 'Returned from Registry', 'Ready to Notarize', 'Notarized',
+   'Registering') — this maps any of those onto the 3 current ones so the
+   rest of the app (status picker, filters, badges, completion checks) only
+   ever has to reason about 3 values, no matter what's actually stored.
+   Everything at or after "the client already signed" collapses into
+   Completed; everything before that collapses into Pending. Unrecognized
+   values fall back to Pending rather than silently vanishing. */
+const LEGACY_CAR_STATUS_MAP = {
+  "In Progress": "Pending",
+  "Returned from Registry": "Pending",
+  "Ready to Notarize": "Completed",
+  Notarized: "Completed",
+  Registering: "Completed",
+};
+export function normalizeCarStatus(status) {
+  if (status === "Pending" || status === "Ready to Sign" || status === "Completed") return status;
+  return LEGACY_CAR_STATUS_MAP[status] || "Pending";
+}
+
 /* ---- Operational Excellence: when each case type counts as "completed", and which score category it feeds ---- */
 export const isCarCompleted = (car) => {
-  if (car.status === "Notarized" || car.status === "Completed" || car.status === "Returned from Registry") return true;
-  if (car.status === "Registering" && car.registry_filing_number && car.pin) return true; // copied from the registry's spreadsheet
+  if (normalizeCarStatus(car.status) === "Completed") return true;
   if ((car.case_type === "Power of Attorney" || car.case_type === "Sub-power of Attorney") && car.paid_status === "ok") return true; // car powers of attorney / sub-powers also count once paid
   return false;
 };
@@ -60,7 +81,7 @@ export const documentInEarlyStage = (doc) => {
   const idx = arr.indexOf(val);
   return idx === 0 || idx === 1;
 };
-export const carInEarlyStage = (car) => car.status === "Pending" || car.status === "In Progress";
+export const carInEarlyStage = (car) => normalizeCarStatus(car.status) === "Pending";
 
 /* Automatic sum of completed cars, documents and properties for a given month (YYYY-MM), grouped by score category */
 export function computeAutomaticTotals(cars, documents, properties, flaggedDocuments, ym) {
