@@ -6,6 +6,7 @@ import {
   RECONSTRUCTION_STATUSES, SAS_STATUSES, STATUSES, NEXT_ACTION_OWNERS, byPriority,
 } from "../lib/constants.js";
 import { todayISO } from "../lib/format.js";
+import { sanitizeForSupabase } from "../lib/sanitizePayload.js";
 import {
   isDocumentCompleted, isPendingLike, isSimplifiedDocument,
 } from "../lib/businessLogic.js";
@@ -39,7 +40,8 @@ export default function Documents({ documents, simpleMode }) {
   const save = async () => {
     setSaving(true);
     try {
-      const payload = { ...form };
+      const payload = sanitizeForSupabase(form);
+      payload.case_date = payload.case_date || todayISO(); // case_date is NOT NULL; sanitize alone would null it if cleared
       if (isDocumentCompleted(payload)) payload.completed_at = todayISO();
       await documents.insertRow(payload);
       setForm(blankDocument());
@@ -57,7 +59,7 @@ export default function Documents({ documents, simpleMode }) {
     const was = isDocumentCompleted(doc), now = isDocumentCompleted(next);
     if (now && !was) extra.completed_at = todayISO();
     if (!now && was) extra.completed_at = null;
-    documents.updateRow(id, { ...patch, ...extra }, opts);
+    documents.updateRow(id, sanitizeForSupabase({ ...patch, ...extra }), opts);
   };
   const remove = (id) => documents.removeRow(id);
 

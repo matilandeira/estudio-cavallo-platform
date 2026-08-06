@@ -8,7 +8,7 @@ export const startOfWeekISO = () => {
 };
 
 export const fmtDate = (d) =>
-  d ? new Date(d + "T00:00:00").toLocaleDateString("en-US", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
+  d ? new Date(d + "T00:00:00").toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
 
 export const fmtTime = (t) => (t ? t.slice(0, 5) : "—");
 

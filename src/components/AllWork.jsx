@@ -6,6 +6,7 @@ import {
   PROBATE_STATUSES, SAS_STATUSES, SCAN_STATUSES, RECONSTRUCTION_STATUSES, FLAG_STATUSES,
 } from "../lib/constants.js";
 import { todayISO, fmtDate } from "../lib/format.js";
+import { sanitizeForSupabase } from "../lib/sanitizePayload.js";
 import {
   label as translate, CAR_STATUS_LABELS, STATUS_LABELS, DOCUMENT_TYPE_LABELS, PRIORITY_LABELS,
   ORIGIN_LABELS, documentStatusLabelEs, bestEffortStatusLabel,
@@ -54,9 +55,9 @@ export default function AllWork({ cars, documents, properties, flaggedDocuments,
   const flagIt = (it) => {
     if (alreadyFlagged(it)) return;
     if (it.origin === "Car") {
-      flaggedDocuments.insertRow({ flagged_date: todayISO(), sector: "Vehicles", linked_record_id: it.rawId, client: it.client, registry_number: it.registryNumber || "", make_model: it.makeModel || "", registry_filing_number: it.registryFilingNumber || "", pin: it.pin || "", document_description: "", objection_details: "", status: FLAG_STATUSES[0], priority: "" });
+      flaggedDocuments.insertRow(sanitizeForSupabase({ flagged_date: todayISO(), sector: "Vehicles", linked_record_id: it.rawId, client: it.client, registry_number: it.registryNumber || "", make_model: it.makeModel || "", registry_filing_number: it.registryFilingNumber || "", pin: it.pin || "", document_description: "", objection_details: "", status: FLAG_STATUSES[0], priority: "" }));
     } else if (it.origin === "Document") {
-      flaggedDocuments.insertRow({ flagged_date: todayISO(), sector: "Documents", linked_record_id: it.rawId, client: it.client, registry_number: "", make_model: "", registry_filing_number: "", pin: "", document_description: it.documentType || "", objection_details: "", status: FLAG_STATUSES[0], priority: "" });
+      flaggedDocuments.insertRow(sanitizeForSupabase({ flagged_date: todayISO(), sector: "Documents", linked_record_id: it.rawId, client: it.client, registry_number: "", make_model: "", registry_filing_number: "", pin: "", document_description: it.documentType || "", objection_details: "", status: FLAG_STATUSES[0], priority: "" }));
     }
   };
 

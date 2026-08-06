@@ -3,6 +3,7 @@ import { Bell, Car, ClipboardList, FileText, AlertTriangle, ChevronRight, Plus, 
 import { C } from "../lib/theme.jsx";
 import { STAFF, computeScore } from "../lib/constants.js";
 import { todayISO, startOfWeekISO, fmtDate, isOverdue } from "../lib/format.js";
+import { sanitizeForSupabase } from "../lib/sanitizePayload.js";
 import {
   isCarCompleted, isDocumentCompleted, isPropertyCompleted, carInEarlyStage, documentInEarlyStage,
   computeAutomaticTotals,
@@ -187,9 +188,15 @@ function SigningAgenda({ signingAppointments }) {
   const [form, setForm] = useState(blank());
 
   const save = async () => {
+    // appointment_date is NOT NULL with no sensible default (unlike case_date
+    // etc., there's no "today" to fall back to for a specific signing day),
+    // so a missing one has to block the save rather than get sanitized away.
+    if (!form.appointment_date) return;
     setSaving(true);
     try {
-      await signingAppointments.insertRow({ ...form });
+      const payload = sanitizeForSupabase(form);
+      payload.appointment_time = payload.appointment_time || "10:00"; // NOT NULL with a DB default; keep it in sync client-side too
+      await signingAppointments.insertRow(payload);
       setForm(blank());
       setAdding(false);
     } finally {
@@ -282,7 +289,10 @@ function ReadyToSchedule({ documentsReadyToSchedule, signingAppointments }) {
   const schedule = async (p) => {
     const draft = draftFor(p.id);
     if (!draft.date) return;
-    await signingAppointments.insertRow({ appointment_date: draft.date, appointment_time: draft.time, origin: "Car", client: p.client, description: p.description, notes: p.notes || "" });
+    await signingAppointments.insertRow(sanitizeForSupabase({
+      appointment_date: draft.date, appointment_time: draft.time || "10:00", origin: "Car",
+      client: p.client, description: p.description, notes: p.notes || "",
+    }));
     remove(p.id);
   };
 

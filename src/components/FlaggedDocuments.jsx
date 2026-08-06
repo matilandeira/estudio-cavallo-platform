@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight, Trash2 } from "lucide-react";
 import { C } from "../lib/theme.jsx";
 import { PRIORITIES, FLAG_STATUSES, SECTORS } from "../lib/constants.js";
 import { todayISO, fmtDate } from "../lib/format.js";
+import { sanitizeForSupabase } from "../lib/sanitizePayload.js";
 import { monthsElapsed } from "../lib/businessLogic.js";
 import { label as translate, FLAG_STATUS_LABELS, SECTOR_LABELS, PRIORITY_LABELS, DOCUMENT_TYPE_LABELS } from "../lib/labels.js";
 import { AddPanel, Field, PriorityPicker } from "./SharedUI.jsx";
@@ -32,7 +33,9 @@ export default function FlaggedDocuments({ flaggedDocuments, cars, documents }) 
   const save = async () => {
     setSaving(true);
     try {
-      await flaggedDocuments.insertRow({ ...form });
+      const payload = sanitizeForSupabase(form);
+      payload.flagged_date = payload.flagged_date || todayISO(); // flagged_date is NOT NULL; sanitize alone would null it if cleared
+      await flaggedDocuments.insertRow(payload);
       setForm(blankFlag());
       setAdding(false);
     } finally {
@@ -47,7 +50,7 @@ export default function FlaggedDocuments({ flaggedDocuments, cars, documents }) 
     }
     flaggedDocuments.updateRow(id, { status, resolved: false, resolved_at: null });
   };
-  const setPriority = (id, priority) => flaggedDocuments.updateRow(id, { priority });
+  const setPriority = (id, priority) => flaggedDocuments.updateRow(id, sanitizeForSupabase({ priority }));
 
   // Auto-escalate to High priority once a flagged car registration has been open 4+ months (expires at 5)
   useEffect(() => {

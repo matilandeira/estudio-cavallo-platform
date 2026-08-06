@@ -3,6 +3,7 @@ import { Search, Trash2 } from "lucide-react";
 import { C } from "../lib/theme.jsx";
 import { STAFF, PROPERTY_TYPES, PROPERTY_STAGES, STATUSES, NEXT_ACTION_OWNERS, byPriority } from "../lib/constants.js";
 import { todayISO } from "../lib/format.js";
+import { sanitizeForSupabase } from "../lib/sanitizePayload.js";
 import { isPropertyCompleted } from "../lib/businessLogic.js";
 import { label as translate, PROPERTY_TYPE_LABELS, PROPERTY_STAGE_LABELS, STATUS_LABELS } from "../lib/labels.js";
 import { Header, AddPanel, Field, FilterBar, AssigneesPicker, PriorityPicker, Check, TriStatus, TriLegend, assigneeMatches } from "./SharedUI.jsx";
@@ -47,7 +48,8 @@ export default function Properties({ properties, documentsReadyToSchedule, simpl
   const save = async () => {
     setSaving(true);
     try {
-      const payload = { ...form };
+      const payload = sanitizeForSupabase(form);
+      payload.case_date = payload.case_date || todayISO(); // case_date is NOT NULL; sanitize alone would null it if cleared
       if (isPropertyCompleted(payload)) payload.completed_at = todayISO();
       await properties.insertRow(payload);
       setForm(blankProperty());
@@ -69,7 +71,7 @@ export default function Properties({ properties, documentsReadyToSchedule, simpl
       extra.ready_to_schedule = true;
       documentsReadyToSchedule.insertRow({ client: next.client, description: `Padrón ${next.registry_number || "—"}`, notes: next.notes || "" });
     }
-    properties.updateRow(id, { ...patch, ...extra }, opts);
+    properties.updateRow(id, sanitizeForSupabase({ ...patch, ...extra }), opts);
   };
   const remove = (id) => properties.removeRow(id);
 

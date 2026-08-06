@@ -3,6 +3,7 @@ import { Trash2 } from "lucide-react";
 import { C } from "../lib/theme.jsx";
 import { STAFF, CAR_CASE_TYPES, CAR_STATUSES, byPriority } from "../lib/constants.js";
 import { todayISO } from "../lib/format.js";
+import { sanitizeForSupabase } from "../lib/sanitizePayload.js";
 import { isCarCompleted, whatsappLinkCarDocsReady, whatsappLinkCoordinateSigning, whatsappLinkRequestDocumentation } from "../lib/businessLogic.js";
 import { label as translate, CASE_TYPE_LABELS, CAR_STATUS_LABELS } from "../lib/labels.js";
 import { Header, AddPanel, Field, FilterBar, AssigneesPicker, PriorityPicker, TriStatus, TriLegend, assigneeMatches } from "./SharedUI.jsx";
@@ -32,7 +33,8 @@ export default function Cars({ cars, documentsReadyToSchedule, simpleMode }) {
   const save = async () => {
     setSaving(true);
     try {
-      const payload = { ...form };
+      const payload = sanitizeForSupabase(form);
+      payload.case_date = payload.case_date || todayISO(); // case_date is NOT NULL; sanitize alone would null it if cleared
       if (isCarCompleted(payload)) payload.completed_at = todayISO();
       await cars.insertRow(payload);
       setForm(blankCar());
@@ -62,7 +64,7 @@ export default function Cars({ cars, documentsReadyToSchedule, simpleMode }) {
     if (next.status === "Ready to Notarize" && car.status !== "Ready to Notarize" && (!next.notarization_assignees || next.notarization_assignees.length === 0)) {
       extra.notarization_assignees = ["Andrea"];
     }
-    cars.updateRow(id, { ...patch, ...extra }, opts);
+    cars.updateRow(id, sanitizeForSupabase({ ...patch, ...extra }), opts);
   };
   const remove = (id) => cars.removeRow(id);
 

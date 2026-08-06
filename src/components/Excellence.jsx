@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight, Trash2 } from "lucide-react";
 import { C } from "../lib/theme.jsx";
 import { LEVELS, computeScore } from "../lib/constants.js";
 import { todayISO, fmtDate } from "../lib/format.js";
+import { sanitizeForSupabase } from "../lib/sanitizePayload.js";
 import { isCarCompleted, isDocumentCompleted, isPropertyCompleted, scoreCategoryForDocument, computeAutomaticTotals } from "../lib/businessLogic.js";
 import { label as translate, CASE_TYPE_LABELS, DOCUMENT_TYPE_LABELS } from "../lib/labels.js";
 import { assigneesLabel } from "./SharedUI.jsx";
@@ -34,7 +35,9 @@ export default function Excellence({ dailyExcellenceLog, cars, documents, proper
   const save = async () => {
     setSaving(true);
     try {
-      await dailyExcellenceLog.insertRow({ ...form });
+      const payload = sanitizeForSupabase(form);
+      payload.log_date = payload.log_date || todayISO(); // log_date is NOT NULL; sanitize alone would null it if cleared
+      await dailyExcellenceLog.insertRow(payload);
       setForm(blankLog());
       setAdding(false);
     } finally {

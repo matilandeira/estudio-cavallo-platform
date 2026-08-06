@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabaseClient.js";
+import { sanitizeForSupabase } from "../lib/sanitizePayload.js";
 
 /* Wraps a Supabase table API (see src/lib/api.js) into local React state.
    - `rows` always reflects what's on screen; mutations are applied optimistically.
@@ -72,7 +73,9 @@ export function useSupabaseCollection(api, { notify, enabled = true } = {}) {
   const insertRow = useCallback(
     async (row) => {
       try {
-        const inserted = await api.insert(row);
+        // Safety net: sanitizes even payloads a component built without
+        // calling sanitizeForSupabase() itself — running it twice is a no-op.
+        const inserted = await api.insert(sanitizeForSupabase(row));
         setRows((prev) => [inserted, ...prev]);
         return inserted;
       } catch (err) {
@@ -86,7 +89,7 @@ export function useSupabaseCollection(api, { notify, enabled = true } = {}) {
   const persist = useCallback(
     async (id, patch, previousRow) => {
       try {
-        const updated = await api.update(id, patch);
+        const updated = await api.update(id, sanitizeForSupabase(patch));
         setRows((prev) => prev.map((r) => (r.id === id ? updated : r)));
       } catch (err) {
         setRows((prev) => prev.map((r) => (r.id === id ? previousRow : r)));
