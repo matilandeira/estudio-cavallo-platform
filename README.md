@@ -19,12 +19,15 @@ Documents, Properties, Operational Excellence and Work, backed by
 
 2. Create the database. In the Supabase SQL editor:
    - **New project:** run `schema.sql` (creates every table, constraints,
-     audit columns and Row Level Security policies), then optionally
-     `seed.sql` to load the office's existing records.
-   - **Existing project** (already ran an earlier version of `schema.sql`
-     before auth was added): run `auth_and_rls_migration.sql` instead — it
-     upgrades the tables in place (adds `created_by`/`updated_by`, replaces
-     the RLS policies) without touching existing data.
+     audit columns, Row Level Security policies, and enables realtime on the
+     tables the UI keeps live), then optionally `seed.sql` to load the
+     office's existing records.
+   - **Existing project, pre-auth** (already ran an earlier version of
+     `schema.sql` before auth was added): run `auth_and_rls_migration.sql`,
+     then `realtime_migration.sql`. Both upgrade the tables in place without
+     touching existing data.
+   - **Existing project, already has auth** (just adding realtime): run only
+     `realtime_migration.sql`.
 
 3. Enable email/password sign-in and create staff accounts: in the Supabase
    dashboard go to **Authentication > Providers** and confirm Email is
@@ -63,8 +66,21 @@ Vercel, your own server, etc.).
 ## Data storage
 
 All data lives in Supabase/PostgreSQL — every screen reads and writes
-through `src/lib/api.js`, so all staff see the same data in real time across
-devices, no matter which browser or computer they use.
+through `src/lib/api.js`.
+
+## Realtime
+
+`src/hooks/useSupabaseCollection.js` — the hook behind cars, documents,
+properties, the daily excellence log, signing appointments, the two
+scheduling queues, and flagged documents — subscribes to Postgres Changes
+(`supabase.channel(...).on('postgres_changes', ...)`) for its table in
+addition to its initial fetch. When any signed-in user inserts, edits, or
+deletes a row, every other connected client's local state updates
+immediately, no page refresh needed; each subscription is cleaned up
+(`supabase.removeChannel`) when the component unmounts. This only works
+because those tables are in the `supabase_realtime` publication (set up by
+`schema.sql`/`realtime_migration.sql`) — enabling RLS alone doesn't turn
+realtime on.
 
 ## Authentication & security
 
@@ -91,13 +107,14 @@ estudio-cavallo-platform/
 ├── index.html              # Root HTML that loads the app
 ├── package.json             # Dependencies and scripts
 ├── vite.config.js           # Vite configuration
-├── schema.sql                # Database schema (tables, constraints, audit columns, RLS)
+├── schema.sql                # Database schema (tables, constraints, audit columns, RLS, realtime)
 ├── auth_and_rls_migration.sql # In-place upgrade for a pre-auth database (see Setup)
+├── realtime_migration.sql     # In-place upgrade to enable realtime (see Setup)
 ├── seed.sql                  # Optional: migrates existing office records
 ├── .env.local                 # Supabase URL/key (gitignored)
 └── src/
     ├── main.jsx               # React entry point
-    ├── App.jsx                # Top-level shell: auth gate, navigation and tabs
+    ├── App.jsx                # Auth gate only: spinner / Login / AuthenticatedApp
     ├── lib/
     │   ├── supabaseClient.js   # Supabase client (reads .env.local)
     │   ├── api.js                # CRUD helpers per table
@@ -107,12 +124,13 @@ estudio-cavallo-platform/
     │   └── theme.js               # Design tokens and global styles
     ├── hooks/
     │   ├── useAuth.js                 # Supabase Auth session state + sign out
-    │   ├── useSupabaseCollection.js  # Generic list/insert/update/delete + optimistic UI
+    │   ├── useSupabaseCollection.js  # list/insert/update/delete + optimistic UI + realtime sync
     │   ├── useAppSettings.js          # "Simple mode" toggle
     │   ├── useRecurringTasks.js       # Recurring office tasks completion/assignees
     │   └── useToasts.js                # Success/error toast notifications
     └── components/
         ├── Login.jsx            # Sign-in screen (email/password)
+        ├── AuthenticatedApp.jsx # Everything that needs a session: nav, tabs, data hooks
         ├── SharedUI.jsx        # Buttons, badges, pickers, filter bar, header
         ├── Home.jsx             # Home tab: agenda, reminders, KPIs, recurring tasks
         ├── Cars.jsx              # Cars tab

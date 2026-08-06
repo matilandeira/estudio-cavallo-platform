@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { supabase } from "../lib/supabaseClient.js";
 
 /* Wraps a Supabase table API (see src/lib/api.js) into local React state.
    - `rows` always reflects what's on screen; mutations are applied optimistically.
@@ -6,7 +7,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
      and, when `debounce` is set, waits briefly before sending it to Supabase — this
      keeps free-text inputs (onChange fires per keystroke) from hammering the network.
    - On any failed write, the change is rolled back locally and `notify("error", …)`
-     is called so the UI can surface it. */
+     is called so the UI can surface it.
+   - A Postgres Changes realtime subscription keeps `rows` in sync with what
+     every other signed-in client does to the same table, live, no refresh
+     needed — see the "REALTIME" section below. */
 export function useSupabaseCollection(api, { notify, enabled = true } = {}) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(enabled);
@@ -33,6 +37,37 @@ export function useSupabaseCollection(api, { notify, enabled = true } = {}) {
     if (!enabled) return;
     reload();
   }, [reload, enabled]);
+
+  // ---- REALTIME -------------------------------------------------------
+  // Merges by id, so it doesn't matter whether the change came from this
+  // same tab (already applied optimistically by insertRow/persist/removeRow
+  // below) or from a different user/device — applying it twice is a no-op.
+  // Requires the table to be added to the `supabase_realtime` publication
+  // (see schema.sql / realtime_migration.sql) — enabling RLS alone isn't
+  // enough for postgres_changes events to be emitted.
+  useEffect(() => {
+    if (!enabled || !api.table) return;
+
+    const channel = supabase
+      .channel(`realtime:${api.table}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: api.table }, (payload) => {
+        if (payload.eventType === "INSERT") {
+          const row = payload.new;
+          setRows((prev) => (prev.some((r) => r.id === row.id) ? prev : [row, ...prev]));
+        } else if (payload.eventType === "UPDATE") {
+          const row = payload.new;
+          setRows((prev) => (prev.some((r) => r.id === row.id) ? prev.map((r) => (r.id === row.id ? row : r)) : [row, ...prev]));
+        } else if (payload.eventType === "DELETE") {
+          const oldRow = payload.old;
+          setRows((prev) => prev.filter((r) => r.id !== oldRow.id));
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [enabled, api.table]);
 
   const insertRow = useCallback(
     async (row) => {

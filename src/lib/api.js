@@ -1,9 +1,13 @@
 import { supabase } from "./supabaseClient.js";
 
 /* Generic Supabase CRUD helpers for a single table. Every table has a uuid
-   primary key named "id", so insert/update/remove can share this shape. */
+   primary key named "id", so insert/update/remove can share this shape.
+   `table` is exposed on the returned object so callers (useSupabaseCollection)
+   can subscribe to postgres_changes for the same table without repeating its
+   name at every call site. */
 export function createTableApi(table, { orderBy = "created_at", ascending = false } = {}) {
   return {
+    table,
     async list() {
       const { data, error } = await supabase.from(table).select("*").order(orderBy, { ascending });
       if (error) throw error;

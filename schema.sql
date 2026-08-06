@@ -19,9 +19,16 @@
 -- auth.uid(), updated_by via the set_audit_columns() trigger below — so the
 -- application code never needs to (and can't spoof) set them.
 --
+-- REALTIME: the 8 tables the UI keeps live (cars, documents, properties,
+-- daily_excellence_log, signing_appointments, documents_ready_to_schedule,
+-- properties_near_signing, flagged_documents) are added to the
+-- supabase_realtime publication near the bottom, so every signed-in client
+-- sees other people's inserts/updates/deletes appear immediately.
+--
 -- If you already ran an earlier version of this schema against a live
--- project, don't re-run this file — use auth_and_rls_migration.sql instead,
--- which upgrades an existing database in place without dropping data.
+-- project, don't re-run this file — use auth_and_rls_migration.sql (and, if
+-- you're adding realtime to an existing database, realtime_migration.sql)
+-- instead, which upgrade an existing database in place without dropping data.
 -- ============================================================================
 
 create extension if not exists pgcrypto;
@@ -372,3 +379,21 @@ create policy "Authenticated users only" on recurring_task_assignees for all
   using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
 create policy "Authenticated users only" on app_settings for all
   using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+
+-- ============================================================================
+-- REALTIME — broadcast INSERT/UPDATE/DELETE on the tables the UI keeps live
+-- (src/hooks/useSupabaseCollection.js subscribes to these via
+-- supabase.channel(...).on('postgres_changes', ...)). RLS still applies:
+-- only authenticated clients receive these events, matching the policies
+-- above. Enabling RLS does NOT enable this on its own — a table has to be
+-- added to the `supabase_realtime` publication for postgres_changes to fire.
+-- ============================================================================
+alter publication supabase_realtime add table
+  cars,
+  documents,
+  properties,
+  daily_excellence_log,
+  signing_appointments,
+  documents_ready_to_schedule,
+  properties_near_signing,
+  flagged_documents;
