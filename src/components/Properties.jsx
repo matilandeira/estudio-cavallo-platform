@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Search } from "lucide-react";
 import { C } from "../lib/theme.jsx";
 import { STAFF, PROPERTY_TYPES, PROPERTY_STAGES, STATUSES, NEXT_ACTION_OWNERS, byPriority } from "../lib/constants.js";
@@ -67,13 +67,35 @@ export default function Properties({ properties, documentsReadyToSchedule, simpl
     const was = isPropertyCompleted(property), now = isPropertyCompleted(next);
     if (now && !was) extra.completed_at = todayISO();
     if (!now && was) extra.completed_at = null;
-    if (next.stage === "Ready to Sign" && property.stage !== "Ready to Sign" && !next.ready_to_schedule) {
-      extra.ready_to_schedule = true;
-      documentsReadyToSchedule.insertRow({ client: next.client, description: `Padrón ${next.registry_number || "—"}`, notes: next.notes || "" });
-    }
     properties.updateRow(id, sanitizeForSupabase({ ...patch, ...extra }), opts);
   };
   const remove = (id) => properties.removeRowWithUndo(id);
+
+  /* Same self-healing reconciliation as Cars.jsx (see the comment there for
+     the full story): keeps "Documentos prontos para agendar" in sync with
+     every property currently "Ready to Sign", by checking live membership
+     instead of trusting a one-way `ready_to_schedule` flag that can go
+     stale (queue entry deleted/scheduled, seed data, etc.) and never
+     self-correct. */
+  const pendingScheduleInserts = useRef(new Set());
+  useEffect(() => {
+    const queued = documentsReadyToSchedule.rows || [];
+    const missing = properties.rows.filter((p) => {
+      if (p.stage !== "Ready to Sign" || pendingScheduleInserts.current.has(p.id)) return false;
+      const description = `Padrón ${p.registry_number || "—"}`;
+      return !queued.some((q) => q.client === p.client && q.description === description);
+    });
+    missing.forEach(async (p) => {
+      pendingScheduleInserts.current.add(p.id);
+      try {
+        await documentsReadyToSchedule.insertRow({ client: p.client, description: `Padrón ${p.registry_number || "—"}`, notes: p.notes || "" });
+        if (!p.ready_to_schedule) properties.updateRow(p.id, { ready_to_schedule: true });
+      } finally {
+        pendingScheduleInserts.current.delete(p.id);
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [properties.rows, documentsReadyToSchedule.rows]);
 
   return (
     <div className="ec-fade">

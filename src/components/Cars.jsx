@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { C } from "../lib/theme.jsx";
 import { STAFF, CAR_CASE_TYPES, CAR_STATUSES, byPriority } from "../lib/constants.js";
 import { todayISO } from "../lib/format.js";
@@ -56,16 +56,44 @@ export default function Cars({ cars, documentsReadyToSchedule, simpleMode }) {
       extra.status = "Ready to Sign";
       next.status = "Ready to Sign";
     }
-    if (next.status === "Ready to Sign" && !next.ready_to_schedule) {
-      extra.ready_to_schedule = true;
-      documentsReadyToSchedule.insertRow({ client: next.client, description: next.make_model, notes: next.notes || "" });
-    }
     if (next.status === "Ready to Notarize" && car.status !== "Ready to Notarize" && (!next.notarization_assignees || next.notarization_assignees.length === 0)) {
       extra.notarization_assignees = ["Andrea"];
     }
     cars.updateRow(id, sanitizeForSupabase({ ...patch, ...extra }), opts);
   };
   const remove = (id) => cars.removeRowWithUndo(id);
+
+  /* Keeps "Documentos prontos para agendar" in sync with every car currently
+     "Ready to Sign" — reactively, not via a one-way `ready_to_schedule` flag
+     set once inside update(). That flag can't tell the difference between
+     "already queued" and "was queued once, then the queue entry got
+     scheduled/deleted, or the car started life in this status from seed
+     data" — any of those leave it stuck true and the car silently never
+     reappears, even after re-selecting "Ready to Sign" (this is exactly what
+     happened to one car in seed.sql: seeded directly with status "Ready to
+     Sign" and ready_to_schedule true, but with no matching queue row).
+     Checking live membership instead — every time cars or the queue change,
+     including realtime updates from other staff — makes this self-healing. */
+  const pendingScheduleInserts = useRef(new Set());
+  useEffect(() => {
+    const queued = documentsReadyToSchedule.rows || [];
+    const missing = cars.rows.filter(
+      (c) =>
+        c.status === "Ready to Sign" &&
+        !pendingScheduleInserts.current.has(c.id) &&
+        !queued.some((q) => q.client === c.client && q.description === c.make_model)
+    );
+    missing.forEach(async (c) => {
+      pendingScheduleInserts.current.add(c.id);
+      try {
+        await documentsReadyToSchedule.insertRow({ client: c.client, description: c.make_model, notes: c.notes || "" });
+        if (!c.ready_to_schedule) cars.updateRow(c.id, { ready_to_schedule: true });
+      } finally {
+        pendingScheduleInserts.current.delete(c.id);
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cars.rows, documentsReadyToSchedule.rows]);
 
   return (
     <div className="ec-fade">
