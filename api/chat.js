@@ -20,6 +20,28 @@ const MODEL = "claude-haiku-4-5-20251001";
 const MAX_HISTORY = 20; // caps token usage on long conversations
 const MAX_MESSAGE_LENGTH = 4000; // caps a single oversized message
 
+/* buildContext() below queries Supabase's raw English enum values directly
+   (status/priority/case_type/document_type/stage), so the model sees the
+   same English/snake_case strings stored in the DB. This glossary mirrors
+   src/lib/labels.js — the same map the UI itself uses to render those
+   values — so replies use the office's exact terminology instead of the
+   model guessing a plausible-sounding translation on its own. */
+const SPANISH_GLOSSARY = `
+Prioridad: Low=Baja, Medium=Media, High=Alta
+
+Estado (autos): Pending=Pendiente, In Progress=Trabajando en él, Returned from Registry=Llegó del registro, Ready to Sign=Pronto para firma, Ready to Notarize=Para protocolizar, Notarized=Protocolizado, Registering=Inscribiéndose, Completed=Finalizado
+
+Estado (documentos y general): Pending=Pendiente, In Progress=En trámite, On Hold=En espera, For Review=Para revisión, Completed=Finalizado
+
+Tipo de trámite (autos): Sale=Compraventa, Power of Attorney=Poder, Sub-power of Attorney=Submandato, Trade-in=Permuta, Other=Otro
+
+Tipo de documento: Certified Copy=Testimonio, Notarial Certificate=Certificado notarial, Signature Certification=Certificación de firmas, General Power of Attorney=Poder general, Special Power of Attorney=Poder especial, Notarial Deed=Acta notarial, Payment Receipt=Carta de pago, Sub-power of Attorney=Submandato, Estate Probate=Sucesiones, SAS=SAS, Document Scanning=Escaneo de documentación, Document Reconstruction=Reconstrucción de documentación, Other=Otro
+
+Etapa (inmuebles): Preparing Agreement=Preparar boleto, Agreement Approved=Boleto aprobado, Ready to Sign=Pronto para firma, Agreement Signed=Boleto firmado, Promise of Sale=Promesa, Sale Deed=Compraventa, Registering=Inscribiéndose, Documentation Received=Llegó la documentación, Completed=Finalizado
+
+Estado (documentos observados): Resolving=Solucionando, Objection Filed=Observación presentada, Objection Nearly Resolved=Observación pronta, Objection Cleared=Observación levantada, Completed=Finalizado
+`.trim();
+
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -150,7 +172,16 @@ export default async function handler(req, res) {
         "rioplatense, de forma clara, concisa y profesional. Basá tus respuestas ÚNICAMENTE en los datos del " +
         "estudio listados a continuación — es un resumen del estado actual, no la base de datos completa. Si no " +
         "tenés datos suficientes para responder con certeza, decilo claramente en vez de inventar. No repitas el " +
-        "resumen completo salvo que te lo pidan; respondé la pregunta puntual.\n\n" + context,
+        "resumen completo salvo que te lo pidan; respondé la pregunta puntual.\n\n" +
+        "El resumen de datos usa los valores tal cual están guardados en la base de datos, en inglés (estados, " +
+        "prioridades, tipos de trámite, tipos de documento, etapas de inmuebles). NUNCA muestres esos valores en " +
+        "inglés ni en snake_case en tu respuesta — traducilos siempre a la terminología exacta que usa la " +
+        "interfaz del estudio, según este glosario:\n\n" + SPANISH_GLOSSARY + "\n\n" +
+        "Si aparece un valor que no figura en el glosario, traducilo de forma natural al español en vez de " +
+        "repetirlo en inglés. Escribí las fechas en formato natural en español (por ejemplo \"15 de agosto de " +
+        "2026\", nunca \"2026-08-15\" ni \"08/15/2026\"), y los números y montos según la convención en español " +
+        "rioplatense. No uses terminología técnica, snake_case, ni inglés en ninguna parte de tu respuesta: quien " +
+        "te lee es personal administrativo del estudio, no alguien mirando la base de datos.\n\n" + context,
       messages,
     });
 
