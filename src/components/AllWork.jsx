@@ -84,7 +84,7 @@ export default function AllWork({ cars, documents, properties, flaggedDocuments,
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, maxWidth: 280, flex: "1 1 220px" }}>
           <Search size={14} color={C.muted} />
-          <input className="ec-input" placeholder="Buscar por cliente, padrón o marca y modelo…" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <input className="ec-input" placeholder="Buscar por cliente, padrón o marca y modelo…" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => { if (e.key === "Escape") setSearch(""); }} />
         </div>
         <input className="ec-input" style={{ width: 150 }} type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
         {month && <button className="ec-btn-ghost" onClick={() => setMonth("")}><X size={13} /> Mes</button>}

@@ -248,7 +248,7 @@ function SigningAgenda({ signingAppointments, highlightId }) {
         <button className="ec-btn-ghost" onClick={() => setAdding(true)}><Plus size={13} /> Agendar</button>
       </div>
 
-      <AddPanel open={adding} onClose={() => setAdding(false)} title="Nueva firma">
+      <AddPanel open={adding} onClose={() => setAdding(false)} onSubmit={save} title="Nueva firma">
         <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", gap: 10 }}>
           <Field label="Día"><input className="ec-input" type="date" value={form.appointment_date} onChange={(e) => setForm({ ...form, appointment_date: e.target.value })} /></Field>
           <Field label="Hora"><input className="ec-input" type="time" value={form.appointment_time} onChange={(e) => setForm({ ...form, appointment_time: e.target.value })} /></Field>
@@ -328,7 +328,7 @@ function ReadyToSchedule({ documentsReadyToSchedule, signingAppointments }) {
         <button className="ec-btn-ghost" onClick={() => setAdding(true)}><Plus size={13} /> Agregar</button>
       </div>
 
-      <AddPanel open={adding} onClose={() => setAdding(false)} title="Nuevo documento pronto">
+      <AddPanel open={adding} onClose={() => setAdding(false)} onSubmit={save} title="Nuevo documento pronto">
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10 }}>
           <Field label="Cliente"><input className="ec-input" value={form.client} onChange={(e) => setForm({ ...form, client: e.target.value })} /></Field>
           <Field label="Auto"><input className="ec-input" placeholder="Ej: VW Gol" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></Field>
@@ -388,7 +388,7 @@ function PropertiesNearSigning({ properties, propertiesNearSigning, setTab }) {
         <button className="ec-btn-ghost" onClick={() => setAdding(true)}><Plus size={13} /> Agregar</button>
       </div>
 
-      <AddPanel open={adding} onClose={() => setAdding(false)} title="Agregar inmueble próximo a firmarse">
+      <AddPanel open={adding} onClose={() => setAdding(false)} onSubmit={save} title="Agregar inmueble próximo a firmarse">
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 10 }}>
           <Field label="Inmueble">
             <select className="ec-select" value={form.propertyId} onChange={(e) => setForm({ ...form, propertyId: e.target.value })}>

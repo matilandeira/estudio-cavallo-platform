@@ -96,7 +96,7 @@ export default function FlaggedDocuments({ flaggedDocuments, cars, documents }) 
         <button className="ec-btn-ghost" onClick={() => setAdding(true)}>+ Agregar</button>
       </div>
 
-      <AddPanel open={adding} onClose={() => setAdding(false)} title="Nueva observación">
+      <AddPanel open={adding} onClose={() => setAdding(false)} onSubmit={save} title="Nueva observación">
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10 }}>
           <Field label="Fecha de ingreso"><input className="ec-input" type="date" value={form.flagged_date} onChange={(e) => setForm({ ...form, flagged_date: e.target.value })} /></Field>
           <Field label="Sector"><select className="ec-select" value={form.sector} onChange={(e) => setForm({ ...form, sector: e.target.value, linked_record_id: "" })}>{SECTORS.map((t) => <option key={t} value={t}>{translate(SECTOR_LABELS, t)}</option>)}</select></Field>

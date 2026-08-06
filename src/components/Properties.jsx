@@ -6,7 +6,7 @@ import { todayISO, isUrgent } from "../lib/format.js";
 import { sanitizeForSupabase } from "../lib/sanitizePayload.js";
 import { isPropertyCompleted } from "../lib/businessLogic.js";
 import { label as translate, PROPERTY_TYPE_LABELS, PROPERTY_STAGE_LABELS, STATUS_LABELS } from "../lib/labels.js";
-import { Header, AddPanel, Field, FilterBar, AssigneesPicker, PriorityPicker, Check, TriStatus, TriLegend, assigneeMatches, DeleteButton, OverdueBadge, UrgentFilterToggle, useRowHighlight } from "./SharedUI.jsx";
+import { Header, AddPanel, Field, FilterBar, AssigneesPicker, PriorityPicker, Check, TriStatus, TriLegend, assigneeMatches, DeleteButton, OverdueBadge, UrgentFilterToggle, useRowHighlight, BulkActionBar, useNewItemShortcut } from "./SharedUI.jsx";
 
 const blankProperty = () => ({
   case_date: todayISO(), property_type: PROPERTY_TYPES[0], client: "", registry_number: "", assignees: ["Dahiana"],
@@ -38,7 +38,9 @@ export default function Properties({ properties, documentsReadyToSchedule, simpl
   const [filters, setFilters] = useState({});
   const [urgentOnly, setUrgentOnly] = useState(false);
   const [form, setForm] = useState(blankProperty());
+  const [selected, setSelected] = useState(new Set());
   const activeHighlight = useRowHighlight(highlightId);
+  useNewItemShortcut(() => setAdding(true));
 
   const filtered = properties.rows.filter((i) =>
     !isPropertyCompleted(i) &&
@@ -48,6 +50,16 @@ export default function Properties({ properties, documentsReadyToSchedule, simpl
     (!urgentOnly || isUrgent(i.reminder_date, i.status))
   ).sort(byPriority);
   const urgentCount = properties.rows.filter((i) => !isPropertyCompleted(i) && isUrgent(i.reminder_date, i.status)).length;
+
+  const toggleSelect = (id) => setSelected((prev) => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
+  const allSelected = filtered.length > 0 && filtered.every((i) => selected.has(i.id));
+  const toggleSelectAll = () => setSelected(allSelected ? new Set() : new Set(filtered.map((i) => i.id)));
+  const bulkSetStatus = (status) => { selected.forEach((id) => update(id, { status })); setSelected(new Set()); };
+  const bulkReassign = (name) => { selected.forEach((id) => update(id, { assignees: [name] })); setSelected(new Set()); };
 
   const save = async () => {
     setSaving(true);
@@ -104,7 +116,7 @@ export default function Properties({ properties, documentsReadyToSchedule, simpl
   return (
     <div className="ec-fade">
       <Header title="Inmuebles" subtitle="Seguimiento por cliente y padrón, con checklist y etapa." onAdd={() => setAdding(true)} />
-      <AddPanel open={adding} onClose={() => setAdding(false)} title="Nuevo inmueble">
+      <AddPanel open={adding} onClose={() => setAdding(false)} onSubmit={save} title="Nuevo inmueble">
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: 12 }}>
           <Field label="Fecha"><input className="ec-input" type="date" value={form.case_date} onChange={(e) => setForm({ ...form, case_date: e.target.value })} /></Field>
           <Field label="Tipo"><select className="ec-select" value={form.property_type} onChange={(e) => setForm({ ...form, property_type: e.target.value })}>{PROPERTY_TYPES.map((t) => <option key={t} value={t}>{translate(PROPERTY_TYPE_LABELS, t)}</option>)}</select></Field>
@@ -153,7 +165,7 @@ export default function Properties({ properties, documentsReadyToSchedule, simpl
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, maxWidth: 320, flex: "1 1 240px" }}>
           <Search size={14} color={C.muted} />
-          <input className="ec-input" placeholder="Buscar por cliente o padrón…" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <input className="ec-input" placeholder="Buscar por cliente o padrón…" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => { if (e.key === "Escape") setSearch(""); }} />
         </div>
         <FilterBar filters={filters} setFilters={setFilters} options={[
           { key: "assignee", label: "Responsable", values: STAFF },
@@ -163,6 +175,21 @@ export default function Properties({ properties, documentsReadyToSchedule, simpl
       </div>
 
       <TriLegend />
+
+      <BulkActionBar
+        count={selected.size}
+        onClear={() => setSelected(new Set())}
+        statusOptions={STATUSES}
+        statusLabelFor={(v) => translate(STATUS_LABELS, v)}
+        onBulkStatus={bulkSetStatus}
+        onBulkAssignee={bulkReassign}
+      />
+      {filtered.length > 0 && (
+        <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, cursor: "pointer" }}>
+          <Check checked={allSelected} onChange={toggleSelectAll} />
+          <span style={{ fontSize: 12, color: C.muted }}>Seleccionar todo ({filtered.length})</span>
+        </label>
+      )}
       <div style={{ display: "grid", gap: 10 }}>
         {filtered.length === 0 && <div className="ec-card" style={{ padding: 24, textAlign: "center", color: C.muted }}>No se encontraron inmuebles.</div>}
         {filtered.map((i) => {
@@ -173,6 +200,7 @@ export default function Properties({ properties, documentsReadyToSchedule, simpl
             <div key={i.id} id={`row-${i.id}`} className={activeHighlight === i.id ? "ec-card ec-highlight" : "ec-card"} style={{ padding: 14 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10 }}>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", flex: 1, minWidth: 260 }}>
+                  <Check checked={selected.has(i.id)} onChange={() => toggleSelect(i.id)} />
                   <input className="ec-input" style={{ width: 150, fontWeight: 700 }} placeholder="Cliente" value={i.client || ""} onChange={(e) => update(i.id, { client: e.target.value }, { debounce: true })} />
                   <Field label="Padrón"><input className="ec-input" style={{ width: 100 }} value={i.registry_number || ""} onChange={(e) => update(i.id, { registry_number: e.target.value }, { debounce: true })} /></Field>
                   <span className="ec-badge" style={{ background: C.paper2, color: i.property_type === "Rural" ? C.bottle : C.brass }}>{translate(PROPERTY_TYPE_LABELS, i.property_type) || "Urbano"}</span>

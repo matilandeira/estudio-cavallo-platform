@@ -171,11 +171,21 @@ export function Seal({ level, size = 128 }) {
   );
 }
 
-/* Generic inline "add row" panel */
-export function AddPanel({ open, onClose, children, title }) {
+/* Generic inline "add row" panel. Supports two keyboard shortcuts when
+   `onSubmit` is passed: Ctrl/Cmd+Enter anywhere inside submits (bubbles up
+   from any input/select), Esc closes — matching the app-wide shortcut set
+   advertised in ShortcutsHelp below. */
+export function AddPanel({ open, onClose, children, title, onSubmit }) {
   if (!open) return null;
+  const handleKeyDown = (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+      if (onSubmit) { e.preventDefault(); onSubmit(); }
+    } else if (e.key === "Escape") {
+      onClose?.();
+    }
+  };
   return (
-    <div className="ec-card ec-fade" style={{ padding: 16, marginBottom: 14, borderColor: C.brass, background: C.paper3 }}>
+    <div className="ec-card ec-fade" style={{ padding: 16, marginBottom: 14, borderColor: C.brass, background: C.paper3 }} onKeyDown={handleKeyDown}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
         <span className="ec-serif" style={{ fontWeight: 700, fontSize: 15 }}>{title}</span>
         <button className="ec-btn-ghost" onClick={onClose}><X size={14} /> Cerrar</button>
@@ -268,6 +278,115 @@ export function TriLegend() {
         );
       })}
     </div>
+  );
+}
+
+/* ============================== BULK ACTION BAR ============================== */
+/* Shown once one or more rows are checked (Autos/Documentos/Inmuebles). Both
+   selects behave as one-shot action menus rather than persistent state:
+   picking a value fires the bulk update immediately and resets itself to
+   the placeholder, instead of trying to represent "the status of N
+   different rows" as one selected option. */
+export function BulkActionBar({ count, onClear, statusOptions, statusLabelFor, statusCaption, onBulkStatus, onBulkAssignee, assigneeOptions = STAFF }) {
+  if (!count) return null;
+  const fire = (handler) => (e) => {
+    const v = e.target.value;
+    if (v) handler(v);
+    e.target.value = "";
+  };
+  return (
+    <div className="ec-card ec-fade" style={{ padding: "10px 14px", marginBottom: 12, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", background: C.ink, borderColor: C.ink }}>
+      <span style={{ fontWeight: 700, fontSize: 13, color: C.white }}>{count} seleccionado{count === 1 ? "" : "s"}</span>
+      {statusOptions && (
+        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: C.brassLight }}>
+          Cambiar estado:
+          <select className="ec-select" style={{ width: "auto" }} defaultValue="" onChange={fire(onBulkStatus)}>
+            <option value="" disabled>Elegir…</option>
+            {statusOptions.map((s) => <option key={s} value={s}>{statusLabelFor ? statusLabelFor(s) : s}</option>)}
+          </select>
+          {statusCaption && <span style={{ fontSize: 10.5, opacity: .85 }}>({statusCaption})</span>}
+        </label>
+      )}
+      {onBulkAssignee && (
+        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: C.brassLight }}>
+          Reasignar a:
+          <select className="ec-select" style={{ width: "auto" }} defaultValue="" onChange={fire(onBulkAssignee)}>
+            <option value="" disabled>Elegir…</option>
+            {assigneeOptions.map((a) => <option key={a} value={a}>{a}</option>)}
+          </select>
+        </label>
+      )}
+      <button className="ec-btn-ghost" style={{ marginLeft: "auto", borderColor: C.brassLight, color: C.brassLight }} onClick={onClear}>Cancelar selección</button>
+    </div>
+  );
+}
+
+/* ============================== KEYBOARD SHORTCUTS ============================== */
+/* Global single-key shortcut (used for "N" = new item), suppressed while the
+   user is typing in an input/select/textarea/contenteditable so it doesn't
+   fire just because someone typed the letter "n" into a form field. Each
+   tab component that supports it (Cars/Documents/Properties) registers its
+   own listener — since only the active tab is ever mounted at a time, only
+   one handler for a given key is ever live. */
+export function useNewItemShortcut(onTrigger) {
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key.toLowerCase() !== "n" || e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target;
+      const isTyping = t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable);
+      if (isTyping) return;
+      e.preventDefault();
+      onTrigger();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onTrigger]);
+}
+
+const SHORTCUTS = [
+  { keys: "Ctrl/Cmd + K", desc: "Buscar en autos, documentos, inmuebles y agenda" },
+  { keys: "N", desc: "Nuevo trámite en Autos, Documentos e Inmuebles" },
+  { keys: "Ctrl/Cmd + Enter", desc: "Guardar el formulario abierto" },
+  { keys: "Esc", desc: "Cerrar el formulario, buscador o menú activo" },
+];
+
+/* Small "?" button in the header that pops a legend of every keyboard
+   shortcut in the app — the shortcuts themselves work without it, this is
+   purely so staff can discover them. */
+export function ShortcutsHelp() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onClickAway = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", onClickAway);
+    return () => document.removeEventListener("mousedown", onClickAway);
+  }, [open]);
+
+  return (
+    <span ref={ref} style={{ position: "relative", display: "inline-flex" }}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        title="Atajos de teclado"
+        style={{ background: "none", border: `1px solid ${C.brassLight}`, borderRadius: "50%", width: 22, height: 22, cursor: "pointer", color: C.brassLight, fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
+      >
+        ?
+      </button>
+      {open && (
+        <div className="ec-card ec-fade" style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 250, padding: 12, width: 260, boxShadow: "0 10px 30px rgba(0,0,0,.25)" }}>
+          <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".05em", color: C.muted, fontWeight: 700, marginBottom: 8 }}>Atajos de teclado</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {SHORTCUTS.map((s) => (
+              <div key={s.keys} style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>
+                <span className="ec-mono" style={{ fontSize: 11, background: C.paper2, padding: "2px 6px", borderRadius: 3, whiteSpace: "nowrap", flexShrink: 0 }}>{s.keys}</span>
+                <span style={{ fontSize: 12, color: C.ink, textAlign: "right" }}>{s.desc}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </span>
   );
 }
 

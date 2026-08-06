@@ -78,7 +78,7 @@ export default function Excellence({ dailyExcellenceLog, cars, documents, proper
         <input className="ec-input" style={{ width: 160 }} type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
       </div>
 
-      <AddPanel open={adding} onClose={() => setAdding(false)} title="Registro diario del equipo">
+      <AddPanel open={adding} onClose={() => setAdding(false)} onSubmit={save} title="Registro diario del equipo">
         <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 10 }}>
           <Field label="Fecha"><input className="ec-input" type="date" value={form.log_date} onChange={(e) => setForm({ ...form, log_date: e.target.value })} /></Field>
           {numFields.map(([k, label]) => (

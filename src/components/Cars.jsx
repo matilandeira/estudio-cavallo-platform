@@ -5,7 +5,7 @@ import { todayISO, isUrgent } from "../lib/format.js";
 import { sanitizeForSupabase } from "../lib/sanitizePayload.js";
 import { isCarCompleted, whatsappLinkCarDocsReady, whatsappLinkCoordinateSigning, whatsappLinkRequestDocumentation } from "../lib/businessLogic.js";
 import { label as translate, CASE_TYPE_LABELS, CAR_STATUS_LABELS } from "../lib/labels.js";
-import { Header, AddPanel, Field, FilterBar, AssigneesPicker, PriorityPicker, TriStatus, TriLegend, assigneeMatches, DeleteButton, OverdueBadge, UrgentFilterToggle, useRowHighlight } from "./SharedUI.jsx";
+import { Header, AddPanel, Field, FilterBar, AssigneesPicker, PriorityPicker, TriStatus, TriLegend, assigneeMatches, DeleteButton, OverdueBadge, UrgentFilterToggle, useRowHighlight, Check, BulkActionBar, useNewItemShortcut } from "./SharedUI.jsx";
 
 const blankCar = () => ({
   case_date: todayISO(), client: "", phone: "", financed: false, plate_number: "", registry_number: "", make_model: "",
@@ -25,12 +25,24 @@ export default function Cars({ cars, documentsReadyToSchedule, simpleMode, highl
   const [filters, setFilters] = useState({});
   const [urgentOnly, setUrgentOnly] = useState(false);
   const [form, setForm] = useState(blankCar());
+  const [selected, setSelected] = useState(new Set());
   const activeHighlight = useRowHighlight(highlightId);
+  useNewItemShortcut(() => setAdding(true));
 
   const filtered = cars.rows
     .filter((c) => !isCarCompleted(c) && (!filters.status || c.status === filters.status) && (!filters.assignee || assigneeMatches(c.assignees, filters.assignee) || assigneeMatches(c.notarization_assignees, filters.assignee)) && (!urgentOnly || isUrgent(c.reminder_date, c.status)))
     .sort(byPriority);
   const urgentCount = cars.rows.filter((c) => !isCarCompleted(c) && isUrgent(c.reminder_date, c.status)).length;
+
+  const toggleSelect = (id) => setSelected((prev) => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
+  const allSelected = filtered.length > 0 && filtered.every((c) => selected.has(c.id));
+  const toggleSelectAll = () => setSelected(allSelected ? new Set() : new Set(filtered.map((c) => c.id)));
+  const bulkSetStatus = (status) => { selected.forEach((id) => update(id, { status })); setSelected(new Set()); };
+  const bulkReassign = (name) => { selected.forEach((id) => update(id, { assignees: [name] })); setSelected(new Set()); };
 
   const save = async () => {
     setSaving(true);
@@ -101,7 +113,7 @@ export default function Cars({ cars, documentsReadyToSchedule, simpleMode, highl
   return (
     <div className="ec-fade">
       <Header title="Automotores" subtitle="Registro diario y cuatro controles esenciales." onAdd={() => setAdding(true)} />
-      <AddPanel open={adding} onClose={() => setAdding(false)} title="Nuevo trámite de automotor">
+      <AddPanel open={adding} onClose={() => setAdding(false)} onSubmit={save} title="Nuevo trámite de automotor">
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10 }}>
           <Field label="Fecha"><input className="ec-input" type="date" value={form.case_date} onChange={(e) => setForm({ ...form, case_date: e.target.value })} /></Field>
           <Field label="Cliente"><input className="ec-input" value={form.client} onChange={(e) => setForm({ ...form, client: e.target.value })} /></Field>
@@ -147,6 +159,21 @@ export default function Cars({ cars, documentsReadyToSchedule, simpleMode, highl
       </div>
 
       {!simpleMode && <TriLegend />}
+
+      <BulkActionBar
+        count={selected.size}
+        onClear={() => setSelected(new Set())}
+        statusOptions={CAR_STATUSES.filter((s) => s !== "Notarized")}
+        statusLabelFor={(v) => translate(CAR_STATUS_LABELS, v)}
+        onBulkStatus={bulkSetStatus}
+        onBulkAssignee={bulkReassign}
+      />
+      {filtered.length > 0 && (
+        <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, cursor: "pointer" }}>
+          <Check checked={allSelected} onChange={toggleSelectAll} />
+          <span style={{ fontSize: 12, color: C.muted }}>Seleccionar todo ({filtered.length})</span>
+        </label>
+      )}
       <div style={{ display: "grid", gap: 10 }}>
         {filtered.length === 0 && <div className="ec-card" style={{ padding: 24, textAlign: "center", color: C.muted }}>No hay autos registrados todavía.</div>}
         {filtered.map((a) => {
@@ -155,6 +182,7 @@ export default function Cars({ cars, documentsReadyToSchedule, simpleMode, highl
           <div key={a.id} id={`row-${a.id}`} className={activeHighlight === a.id ? "ec-card ec-highlight" : "ec-card"} style={{ padding: 14 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10 }}>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", flex: 1, minWidth: 260 }}>
+                <Check checked={selected.has(a.id)} onChange={() => toggleSelect(a.id)} />
                 <input className="ec-input" style={{ width: 150, fontWeight: 700 }} placeholder="Cliente" value={a.client || ""} onChange={(e) => update(a.id, { client: e.target.value }, { debounce: true })} />
                 <input className="ec-input" style={{ width: 140 }} placeholder="Marca y modelo" value={a.make_model || ""} onChange={(e) => update(a.id, { make_model: e.target.value }, { debounce: true })} />
                 {a.financed && <span className="ec-badge" style={{ background: C.paper2, color: C.wax }}>Financiado</span>}

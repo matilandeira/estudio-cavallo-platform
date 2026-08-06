@@ -14,7 +14,7 @@ import {
   label as translate, DOCUMENT_TYPE_LABELS, PROBATE_STATUS_LABELS, POA_STATUS_LABELS, SCAN_STATUS_LABELS,
   RECONSTRUCTION_STATUS_LABELS, SAS_STATUS_LABELS, STATUS_LABELS, NEXT_ACTION_OWNER_LABELS,
 } from "../lib/labels.js";
-import { Header, AddPanel, Field, FilterBar, AssigneesPicker, PriorityPicker, Check, assigneeMatches, DeleteButton, OverdueBadge, UrgentFilterToggle, useRowHighlight } from "./SharedUI.jsx";
+import { Header, AddPanel, Field, FilterBar, AssigneesPicker, PriorityPicker, Check, assigneeMatches, DeleteButton, OverdueBadge, UrgentFilterToggle, useRowHighlight, BulkActionBar, useNewItemShortcut } from "./SharedUI.jsx";
 
 const blankDocument = () => ({
   case_date: todayISO(), client: "", phone: "", document_type: DOCUMENT_TYPES[0], reference: "",
@@ -32,12 +32,35 @@ export default function Documents({ documents, simpleMode, highlightId }) {
   const [filters, setFilters] = useState({});
   const [urgentOnly, setUrgentOnly] = useState(false);
   const [form, setForm] = useState(blankDocument());
+  const [selected, setSelected] = useState(new Set());
   const activeHighlight = useRowHighlight(highlightId);
+  useNewItemShortcut(() => setAdding(true));
 
   const filtered = documents.rows
     .filter((d) => !isDocumentCompleted(d) && (!filters.status || d.status === filters.status) && (!filters.assignee || assigneeMatches(d.assignees, filters.assignee)) && (!filters.document_type || d.document_type === filters.document_type) && (!urgentOnly || isUrgent(d.reminder_date, d.status)))
     .sort(byPriority);
   const urgentCount = documents.rows.filter((d) => !isDocumentCompleted(d) && isUrgent(d.reminder_date, d.status)).length;
+
+  const toggleSelect = (id) => setSelected((prev) => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
+  const allSelected = filtered.length > 0 && filtered.every((d) => selected.has(d.id));
+  const toggleSelectAll = () => setSelected(allSelected ? new Set() : new Set(filtered.map((d) => d.id)));
+  // Documents split their lifecycle across several type-specific status
+  // fields (power_of_attorney_status, probate_status, sas_status, etc. — see
+  // primaryStatus() below); the generic `status` field bulk-set here only
+  // actually drives the UI for "regular" documents, so special types are
+  // deliberately skipped rather than silently writing to an unused column.
+  const bulkSetStatus = (status) => {
+    selected.forEach((id) => {
+      const doc = documents.rows.find((d) => d.id === id);
+      if (doc && !isSpecialType(doc.document_type)) update(id, { status });
+    });
+    setSelected(new Set());
+  };
+  const bulkReassign = (name) => { selected.forEach((id) => update(id, { assignees: [name] })); setSelected(new Set()); };
 
   const save = async () => {
     setSaving(true);
@@ -78,7 +101,7 @@ export default function Documents({ documents, simpleMode, highlightId }) {
   return (
     <div className="ec-fade">
       <Header title="Documentos" subtitle="Testimonios, certificados, poderes, sucesiones, SAS y otros." onAdd={() => setAdding(true)} />
-      <AddPanel open={adding} onClose={() => setAdding(false)} title="Nuevo documento">
+      <AddPanel open={adding} onClose={() => setAdding(false)} onSubmit={save} title="Nuevo documento">
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10 }}>
           <Field label="Fecha"><input className="ec-input" type="date" value={form.case_date} onChange={(e) => setForm({ ...form, case_date: e.target.value })} /></Field>
           <Field label="Cliente"><input className="ec-input" value={form.client} onChange={(e) => setForm({ ...form, client: e.target.value })} /></Field>
@@ -133,6 +156,21 @@ export default function Documents({ documents, simpleMode, highlightId }) {
         <UrgentFilterToggle active={urgentOnly} onChange={setUrgentOnly} count={urgentCount} />
       </div>
 
+      <BulkActionBar
+        count={selected.size}
+        onClear={() => setSelected(new Set())}
+        statusOptions={STATUSES}
+        statusLabelFor={(v) => translate(STATUS_LABELS, v)}
+        statusCaption="solo documentos con estado general"
+        onBulkStatus={bulkSetStatus}
+        onBulkAssignee={bulkReassign}
+      />
+      {filtered.length > 0 && (
+        <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, cursor: "pointer" }}>
+          <Check checked={allSelected} onChange={toggleSelectAll} />
+          <span style={{ fontSize: 12, color: C.muted }}>Seleccionar todo ({filtered.length})</span>
+        </label>
+      )}
       <div style={{ display: "grid", gap: 10 }}>
         {filtered.length === 0 && <div className="ec-card" style={{ padding: 24, textAlign: "center", color: C.muted }}>No hay documentos registrados todavía.</div>}
         {filtered.map((d) => {
@@ -143,6 +181,7 @@ export default function Documents({ documents, simpleMode, highlightId }) {
             <div key={d.id} id={`row-${d.id}`} className={activeHighlight === d.id ? "ec-card ec-highlight" : "ec-card"} style={{ padding: 14 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10 }}>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", flex: 1, minWidth: 220 }}>
+                  <Check checked={selected.has(d.id)} onChange={() => toggleSelect(d.id)} />
                   <input className="ec-input" style={{ width: 160, fontWeight: 700 }} placeholder="Cliente" value={d.client || ""} onChange={(e) => update(d.id, { client: e.target.value }, { debounce: true })} />
                   <span style={{ color: C.muted, fontSize: 13 }}>{translate(DOCUMENT_TYPE_LABELS, d.document_type)}</span>
                   {dueReminder && <OverdueBadge />}

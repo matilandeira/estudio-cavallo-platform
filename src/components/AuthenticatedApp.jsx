@@ -11,7 +11,7 @@ import { useSupabaseCollection } from "../hooks/useSupabaseCollection.js";
 import { useAppSettings } from "../hooks/useAppSettings.js";
 import { useRecurringTasks } from "../hooks/useRecurringTasks.js";
 import { useToasts } from "../hooks/useToasts.js";
-import { Toasts, LoadingBlock } from "./SharedUI.jsx";
+import { Toasts, LoadingBlock, ShortcutsHelp } from "./SharedUI.jsx";
 import GlobalSearch from "./GlobalSearch.jsx";
 import AIChatModal from "./AIChatModal.jsx";
 import Home from "./Home.jsx";
@@ -98,6 +98,7 @@ export default function AuthenticatedApp({ user, signOut }) {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             <GlobalSearch cars={cars} documents={documents} properties={properties} signingAppointments={signingAppointments} onNavigate={goToItem} />
+            <ShortcutsHelp />
             <button onClick={toggleSimpleMode} style={{ background: simpleMode ? C.brass : "none", border: `1px solid ${C.brassLight}`, borderRadius: 4, cursor: "pointer", color: simpleMode ? C.ink : C.brassLight, fontSize: 12, padding: "4px 10px", fontWeight: 600 }}>
               {simpleMode ? "Modo simple" : "Modo completo"}
             </button>
