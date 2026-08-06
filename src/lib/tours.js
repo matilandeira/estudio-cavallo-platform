@@ -26,6 +26,14 @@ export const homeTourSteps = [
     },
   },
   {
+    element: '[data-tour="search"]',
+    popover: {
+      title: "Buscar en la agenda",
+      description: "Buscá por cliente sin salir de Inicio.",
+      side: "bottom",
+    },
+  },
+  {
     element: '[data-tour="ready-to-schedule"]',
     popover: {
       title: "Documentos prontos para agendar",
@@ -54,6 +62,14 @@ export const homeTourSteps = [
 export const carsTourSteps = [
   searchStep(),
   {
+    element: '[data-tour="search"]',
+    popover: {
+      title: "Buscar en Autos",
+      description: "Buscá por cliente, padrón o marca y modelo sin salir de esta pestaña.",
+      side: "bottom",
+    },
+  },
+  {
     element: '[data-tour="bulk-select"]',
     popover: {
       title: "Selección múltiple",
@@ -81,6 +97,14 @@ export const carsTourSteps = [
 
 export const documentsTourSteps = [
   searchStep(),
+  {
+    element: '[data-tour="search"]',
+    popover: {
+      title: "Buscar en Documentos",
+      description: "Buscá por cliente o tipo de documento sin salir de esta pestaña.",
+      side: "bottom",
+    },
+  },
   {
     element: '[data-tour="bulk-select"]',
     popover: {

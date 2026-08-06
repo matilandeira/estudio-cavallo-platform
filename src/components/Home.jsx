@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from "react";
-import { Bell, Car, ClipboardList, FileText, AlertTriangle, ChevronRight, Plus } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import { Bell, Car, ClipboardList, FileText, AlertTriangle, ChevronRight, Plus, Search } from "lucide-react";
 import { C } from "../lib/theme.jsx";
 import { STAFF, computeScore } from "../lib/constants.js";
 import { todayISO, startOfWeekISO, fmtDate, isOverdue, isUrgent } from "../lib/format.js";
@@ -17,7 +17,7 @@ import { homeTourSteps } from "../lib/tours.js";
 export default function Home({
   cars, documents, properties, dailyExcellenceLog,
   signingAppointments, documentsReadyToSchedule, propertiesNearSigning, flaggedDocuments,
-  setTab, setWorkInitialFilters, recurringTasks, highlightId,
+  setTab, setWorkInitialFilters, recurringTasks, highlightId, searchSeed,
 }) {
   const today = todayISO();
   const carRows = cars.rows, docRows = documents.rows, propRows = properties.rows;
@@ -91,7 +91,7 @@ export default function Home({
       <div className="ec-dashboard-grid" style={{ marginBottom: 18 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
           <div className="ec-card" style={{ padding: "6px 0" }} data-tour="signing-agenda">
-            <SigningAgenda signingAppointments={signingAppointments} highlightId={highlightId} />
+            <SigningAgenda signingAppointments={signingAppointments} highlightId={highlightId} searchSeed={searchSeed} />
           </div>
           <div className="ec-card" style={{ padding: "6px 0" }} data-tour="ready-to-schedule">
             <ReadyToSchedule documentsReadyToSchedule={documentsReadyToSchedule} signingAppointments={signingAppointments} />
@@ -223,12 +223,20 @@ function UnifiedReminders({ reminders, setTab, urgentOnly, setUrgentOnly, weekCo
   );
 }
 
-function SigningAgenda({ signingAppointments, highlightId }) {
+function SigningAgenda({ signingAppointments, highlightId, searchSeed }) {
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState("");
   const blank = () => ({ appointment_date: todayISO(), appointment_time: "10:00", origin: "Car", client: "", description: "", notes: "" });
   const [form, setForm] = useState(blank());
   const activeHighlight = useRowHighlight(highlightId);
+
+  // Arriving here via global search: show just that client's signings, so
+  // useRowHighlight always has an actual rendered row to scroll to (and, for
+  // a whole-query submit with no specific row, so the list is filtered at all).
+  useEffect(() => {
+    if (searchSeed) setSearch(searchSeed);
+  }, [searchSeed]);
 
   const save = async () => {
     // appointment_date is NOT NULL with no sensible default (unlike case_date
@@ -251,6 +259,7 @@ function SigningAgenda({ signingAppointments, highlightId }) {
   const today = todayISO();
   const upcoming = signingAppointments.rows
     .filter((a) => a.appointment_date >= today)
+    .filter((a) => !search || `${a.client} ${a.description}`.toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => (a.appointment_date === b.appointment_date ? (a.appointment_time || "").localeCompare(b.appointment_time || "") : a.appointment_date.localeCompare(b.appointment_date)));
 
   const groups = [];
@@ -264,9 +273,15 @@ function SigningAgenda({ signingAppointments, highlightId }) {
 
   return (
     <div>
-      <div style={{ padding: "10px 16px", borderBottom: `1.5px solid ${C.ink}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ padding: "10px 16px", borderBottom: `1.5px solid ${C.ink}`, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
         <span className="ec-serif" style={{ fontWeight: 700, fontSize: 14.5 }}>Agenda de firmas</span>
-        <button className="ec-btn-ghost" onClick={() => setAdding(true)}><Plus size={13} /> Agendar</button>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div data-tour="search" style={{ display: "flex", alignItems: "center", gap: 6, width: 150 }}>
+            <Search size={13} color={C.muted} />
+            <input className="ec-input" style={{ fontSize: 12.5, padding: "5px 7px" }} placeholder="Buscar cliente…" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => { if (e.key === "Escape") setSearch(""); }} />
+          </div>
+          <button className="ec-btn-ghost" onClick={() => setAdding(true)}><Plus size={13} /> Agendar</button>
+        </div>
       </div>
 
       <AddPanel open={adding} onClose={() => setAdding(false)} onSubmit={save} title="Nueva firma">
@@ -282,7 +297,7 @@ function SigningAgenda({ signingAppointments, highlightId }) {
       </AddPanel>
 
       <div style={{ padding: "4px 0 8px" }}>
-        {groups.length === 0 && <div style={{ padding: "20px 16px", color: C.muted, fontSize: 13, textAlign: "center" }}>No hay firmas agendadas.</div>}
+        {groups.length === 0 && <div style={{ padding: "20px 16px", color: C.muted, fontSize: 13, textAlign: "center" }}>{search ? "Ninguna firma agendada coincide con la búsqueda." : "No hay firmas agendadas."}</div>}
         {groups.map((g) => (
           <div key={g.appointment_date} style={{ padding: "8px 16px" }}>
             <div className="ec-mono" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".06em", color: C.brass, fontWeight: 600, marginBottom: 4, paddingTop: 4, borderTop: g.appointment_date === today ? "none" : `1px dashed ${C.line}` }}>

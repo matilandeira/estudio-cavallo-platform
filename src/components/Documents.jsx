@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { Search } from "lucide-react";
 import { C } from "../lib/theme.jsx";
 import {
   STAFF, DOCUMENT_TYPES, PROBATE_STATUSES, POWER_OF_ATTORNEY_STATUSES, SCAN_STATUSES,
@@ -28,9 +29,10 @@ const blankDocument = () => ({
   notes: "", completed_at: null,
 });
 
-export default function Documents({ documents, simpleMode, highlightId }) {
+export default function Documents({ documents, simpleMode, highlightId, searchSeed }) {
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState("");
   const [filters, setFilters] = useState({});
   const [urgentOnly, setUrgentOnly] = useState(false);
   const [form, setForm] = useState(blankDocument());
@@ -38,8 +40,25 @@ export default function Documents({ documents, simpleMode, highlightId }) {
   const activeHighlight = useRowHighlight(highlightId);
   useNewItemShortcut(() => setAdding(true));
 
+  // Arriving here via global search: show just that client's documents
+  // (clearing any dropdown filter that might otherwise hide the one being
+  // jumped to) so useRowHighlight always has an actual rendered row to scroll to.
+  useEffect(() => {
+    if (!searchSeed) return;
+    setSearch(searchSeed);
+    setFilters({});
+    setUrgentOnly(false);
+  }, [searchSeed]);
+
   const filtered = documents.rows
-    .filter((d) => !isDocumentCompleted(d) && (!filters.status || d.status === filters.status) && (!filters.assignee || assigneeMatches(d.assignees, filters.assignee)) && (!filters.document_type || d.document_type === filters.document_type) && (!urgentOnly || isUrgent(d.reminder_date, d.status)))
+    .filter((d) =>
+      !isDocumentCompleted(d) &&
+      (!search || `${d.client} ${translate(DOCUMENT_TYPE_LABELS, d.document_type)}`.toLowerCase().includes(search.toLowerCase())) &&
+      (!filters.status || d.status === filters.status) &&
+      (!filters.assignee || assigneeMatches(d.assignees, filters.assignee)) &&
+      (!filters.document_type || d.document_type === filters.document_type) &&
+      (!urgentOnly || isUrgent(d.reminder_date, d.status))
+    )
     .sort(byPriority);
   const urgentCount = documents.rows.filter((d) => !isDocumentCompleted(d) && isUrgent(d.reminder_date, d.status)).length;
 
@@ -151,6 +170,10 @@ export default function Documents({ documents, simpleMode, highlightId }) {
       </AddPanel>
 
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <div data-tour="search" style={{ display: "flex", alignItems: "center", gap: 8, maxWidth: 280, flex: "1 1 220px" }}>
+          <Search size={14} color={C.muted} />
+          <input className="ec-input" placeholder="Buscar por cliente o tipo de documento…" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => { if (e.key === "Escape") setSearch(""); }} />
+        </div>
         <FilterBar filters={filters} setFilters={setFilters} options={[
           { key: "document_type", label: "Tipo", values: DOCUMENT_TYPES, labelFor: (v) => translate(DOCUMENT_TYPE_LABELS, v) },
           { key: "assignee", label: "Responsable", values: STAFF },

@@ -60,13 +60,16 @@ function exportToExcel({ cars, documents, properties, dailyExcellenceLog, flagge
 export default function AuthenticatedApp({ user, signOut }) {
   const [tab, setTab] = useState("home");
   const [workInitialFilters, setWorkInitialFilters] = useState({});
-  const [highlight, setHighlight] = useState(null); // { tab, id } — set by GlobalSearch "jump to item"
+  const [highlight, setHighlight] = useState(null); // { tab, id, query } — set by GlobalSearch "jump to item"
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { toasts, notify, dismiss } = useToasts();
 
-  const goToItem = (targetTab, id) => {
+  // query seeds the target tab's own local search box, so the row is
+  // guaranteed to actually be rendered (not hidden behind some other filter)
+  // before useRowHighlight tries to scroll to and pulse it.
+  const goToItem = (targetTab, id, query) => {
     setTab(targetTab);
-    setHighlight({ tab: targetTab, id });
+    setHighlight({ tab: targetTab, id, query });
   };
 
   const { simpleMode, loading: settingsLoading, toggleSimpleMode } = useAppSettings({ notify });
@@ -98,7 +101,7 @@ export default function AuthenticatedApp({ user, signOut }) {
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <GlobalSearch cars={cars} documents={documents} properties={properties} signingAppointments={signingAppointments} onNavigate={goToItem} />
+            <GlobalSearch cars={cars} documents={documents} properties={properties} signingAppointments={signingAppointments} currentTab={tab} onNavigate={goToItem} />
             {/* Keyboard shortcuts don't apply on a touchscreen with no physical keyboard */}
             <span className="ec-hide-mobile"><ShortcutsHelp /></span>
 
@@ -210,14 +213,15 @@ export default function AuthenticatedApp({ user, signOut }) {
                 propertiesNearSigning={propertiesNearSigning} flaggedDocuments={flaggedDocuments}
                 setTab={setTab} setWorkInitialFilters={setWorkInitialFilters} recurringTasks={recurringTasks}
                 highlightId={highlight?.tab === "home" ? highlight.id : null}
+                searchSeed={highlight?.tab === "home" ? highlight.query : null}
               />
             )}
             {tab === "work" && (
               <AllWork cars={cars} documents={documents} properties={properties} flaggedDocuments={flaggedDocuments} setTab={setTab} initialFilters={workInitialFilters} />
             )}
-            {tab === "cars" && <Cars cars={cars} documentsReadyToSchedule={documentsReadyToSchedule} simpleMode={simpleMode} highlightId={highlight?.tab === "cars" ? highlight.id : null} />}
-            {tab === "documents" && <Documents documents={documents} simpleMode={simpleMode} highlightId={highlight?.tab === "documents" ? highlight.id : null} />}
-            {tab === "properties" && <Properties properties={properties} documentsReadyToSchedule={documentsReadyToSchedule} simpleMode={simpleMode} highlightId={highlight?.tab === "properties" ? highlight.id : null} />}
+            {tab === "cars" && <Cars cars={cars} documentsReadyToSchedule={documentsReadyToSchedule} simpleMode={simpleMode} highlightId={highlight?.tab === "cars" ? highlight.id : null} searchSeed={highlight?.tab === "cars" ? highlight.query : null} />}
+            {tab === "documents" && <Documents documents={documents} simpleMode={simpleMode} highlightId={highlight?.tab === "documents" ? highlight.id : null} searchSeed={highlight?.tab === "documents" ? highlight.query : null} />}
+            {tab === "properties" && <Properties properties={properties} documentsReadyToSchedule={documentsReadyToSchedule} simpleMode={simpleMode} highlightId={highlight?.tab === "properties" ? highlight.id : null} searchSeed={highlight?.tab === "properties" ? highlight.query : null} />}
             {tab === "excellence" && (
               <Excellence dailyExcellenceLog={dailyExcellenceLog} cars={cars} documents={documents} properties={properties} flaggedDocuments={flaggedDocuments} setTab={setTab} />
             )}

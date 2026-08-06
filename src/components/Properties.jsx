@@ -33,7 +33,7 @@ const checklistFor = (propertyType) => (propertyType === "Rural" ? [...BASE_CHEC
 const isLateStage = (stage) => !["Preparing Agreement", "Agreement Approved", "Ready to Sign", "Agreement Signed", "Promise of Sale", "Sale Deed"].includes(stage);
 const isRegistryOnlyStage = (stage) => stage === "Documentation Received";
 
-export default function Properties({ properties, documentsReadyToSchedule, simpleMode, highlightId }) {
+export default function Properties({ properties, documentsReadyToSchedule, simpleMode, highlightId, searchSeed }) {
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
@@ -43,6 +43,16 @@ export default function Properties({ properties, documentsReadyToSchedule, simpl
   const [selected, setSelected] = useState(new Set());
   const activeHighlight = useRowHighlight(highlightId);
   useNewItemShortcut(() => setAdding(true));
+
+  // Arriving here via global search: show just that client's properties
+  // (clearing any dropdown filter that might otherwise hide the one being
+  // jumped to) so useRowHighlight always has an actual rendered row to scroll to.
+  useEffect(() => {
+    if (!searchSeed) return;
+    setSearch(searchSeed);
+    setFilters({});
+    setUrgentOnly(false);
+  }, [searchSeed]);
 
   const filtered = properties.rows.filter((i) =>
     !isPropertyCompleted(i) &&
