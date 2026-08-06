@@ -87,30 +87,56 @@ export function computeAutomaticTotals(cars, documents, properties, flaggedDocum
 export { monthsElapsed };
 export const isCarObjectionDueSoon = (flag) => flag.sector !== "Documents" && monthsElapsed(flag.flagged_date) >= 4;
 
-/* ---- WhatsApp link builders ---- */
+/* ---- WhatsApp link builders ----
+   Always the strict https://wa.me/<international-digits>?text=<encoded>
+   shape — no fallback to https://api.whatsapp.com/send when there's no
+   phone number. That fallback (a `send` URL with no `phone` param) is what
+   was breaking WhatsApp Desktop on macOS: its URL-scheme handler rejects it
+   outright ("This link couldn't be opened"), where the web client would
+   just show a contact picker instead. A link with no destination number
+   can't actually send anything to anyone regardless of platform, so
+   callers treat a null return as "no phone on file" and don't render the
+   button at all, rather than get a link that only sometimes works. */
+
+/* Staff type Uruguayan mobile numbers the way locals write them —
+   "098 048 443" (leading trunk 0, no country code) or, less often,
+   "98 048 443" (no leading 0 either) — never the full international form.
+   wa.me requires the full form, so plain digit-stripping alone still
+   points at a nonexistent/wrong number (e.g. "098048443" instead of
+   "59898048443"). This normalizes the three shapes staff actually enter;
+   anything already in another form (doesn't start with 0, 9, or 598) is
+   passed through as-is rather than guessed at. */
+function toUruguayanInternational(digits) {
+  if (digits.startsWith("598")) return digits;
+  if (digits.startsWith("0")) return "598" + digits.slice(1);
+  if (digits.startsWith("9")) return "598" + digits;
+  return digits;
+}
+
+function buildWhatsappLink(phone, msg) {
+  const digits = (phone || "").replace(/\D/g, "");
+  if (!digits) return null;
+  const international = toUruguayanInternational(digits);
+  return `https://wa.me/${international}?text=${encodeURIComponent(msg)}`;
+}
+
 export function whatsappLinkCarDocsReady(car) {
   const name = car.client || "";
   const msg = car.financed
     ? `Hola ${name}, te escribimos de Estudio Cavallo para informarte que la documentación de tu vehículo financiado ya llegó y está en trámite. Nos pondremos en contacto para coordinar los próximos pasos. ¡Saludos!`
     : `Hola ${name}, te escribimos de Estudio Cavallo para avisarte que tus documentos ya están prontos. ¡Saludos!`;
-  const digits = (car.phone || "").replace(/\D/g, "");
-  const base = digits ? `https://wa.me/${digits}` : `https://api.whatsapp.com/send`;
-  return `${base}?text=${encodeURIComponent(msg)}`;
+  return buildWhatsappLink(car.phone, msg);
 }
 
 export function whatsappLinkCoordinateSigning(car) {
   const name = car.client || "";
   const msg = `Hola ${name}, te escribimos de Estudio Cavallo. Tu trámite ya está pronto para firmar — ¿nos confirmás qué día y horario te queda cómodo para coordinar la firma? ¡Saludos!`;
-  const digits = (car.phone || "").replace(/\D/g, "");
-  const base = digits ? `https://wa.me/${digits}` : `https://api.whatsapp.com/send`;
-  return `${base}?text=${encodeURIComponent(msg)}`;
+  return buildWhatsappLink(car.phone, msg);
 }
 
 export function whatsappLinkRequestDocumentation(car) {
   const name = car.client || "";
   let msg = `Hola ${name}, te escribimos de Estudio Cavallo. Para avanzar con la compra del auto voy a necesitar:\n\n- Foto de los títulos (si nunca tuvo títulos: factura)\n- Foto de la libreta\n- Cédula del titular registral y del cónyuge en caso de estar casado\n- Si está divorciado, con quién\n- SOA\n- Computest si el auto está empadronado en Montevideo y tiene más de 5 años`;
   msg += `\n\n¡Muchas gracias!`;
-  const digits = (car.phone || "").replace(/\D/g, "");
-  const base = digits ? `https://wa.me/${digits}` : `https://api.whatsapp.com/send`;
-  return `${base}?text=${encodeURIComponent(msg)}`;
+  return buildWhatsappLink(car.phone, msg);
 }

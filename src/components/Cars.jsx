@@ -215,23 +215,41 @@ export default function Cars({ cars, documentsReadyToSchedule, simpleMode, highl
             )}
             {a.status === "Pending" && (
               <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px dashed ${C.line}` }}>
-                <a href={whatsappLinkRequestDocumentation(a)} target="_blank" rel="noreferrer" className="ec-btn" style={{ textDecoration: "none", background: "#2CA043", borderColor: "#2CA043" }}>
-                  Pedir documentación por WhatsApp
-                </a>
+                {whatsappLinkRequestDocumentation(a) ? (
+                  <a href={whatsappLinkRequestDocumentation(a)} target="_blank" rel="noopener noreferrer" className="ec-btn" style={{ textDecoration: "none", background: "#2CA043", borderColor: "#2CA043" }}>
+                    Pedir documentación por WhatsApp
+                  </a>
+                ) : (
+                  <span className="ec-btn" style={{ opacity: .55, cursor: "default", background: "#2CA043", borderColor: "#2CA043" }} title="Cargá un teléfono para habilitar el envío por WhatsApp">
+                    Pedir documentación por WhatsApp (sin teléfono)
+                  </span>
+                )}
               </div>
             )}
             {a.status === "Returned from Registry" && (
               <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px dashed ${C.line}` }}>
-                <a href={whatsappLinkCarDocsReady(a)} target="_blank" rel="noreferrer" className="ec-btn" style={{ textDecoration: "none", background: "#2CA043", borderColor: "#2CA043" }}>
-                  Enviar WhatsApp {a.financed ? "(financiado)" : "(prontos)"}
-                </a>
+                {whatsappLinkCarDocsReady(a) ? (
+                  <a href={whatsappLinkCarDocsReady(a)} target="_blank" rel="noopener noreferrer" className="ec-btn" style={{ textDecoration: "none", background: "#2CA043", borderColor: "#2CA043" }}>
+                    Enviar WhatsApp {a.financed ? "(financiado)" : "(prontos)"}
+                  </a>
+                ) : (
+                  <span className="ec-btn" style={{ opacity: .55, cursor: "default", background: "#2CA043", borderColor: "#2CA043" }} title="Cargá un teléfono para habilitar el envío por WhatsApp">
+                    Enviar WhatsApp {a.financed ? "(financiado)" : "(prontos)"} (sin teléfono)
+                  </span>
+                )}
               </div>
             )}
             {a.status === "Ready to Sign" && (
               <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px dashed ${C.line}` }}>
-                <a href={whatsappLinkCoordinateSigning(a)} target="_blank" rel="noreferrer" className="ec-btn" style={{ textDecoration: "none", background: "#2CA043", borderColor: "#2CA043" }}>
-                  Coordinar firma por WhatsApp
-                </a>
+                {whatsappLinkCoordinateSigning(a) ? (
+                  <a href={whatsappLinkCoordinateSigning(a)} target="_blank" rel="noopener noreferrer" className="ec-btn" style={{ textDecoration: "none", background: "#2CA043", borderColor: "#2CA043" }}>
+                    Coordinar firma por WhatsApp
+                  </a>
+                ) : (
+                  <span className="ec-btn" style={{ opacity: .55, cursor: "default", background: "#2CA043", borderColor: "#2CA043" }} title="Cargá un teléfono para habilitar el envío por WhatsApp">
+                    Coordinar firma por WhatsApp (sin teléfono)
+                  </span>
+                )}
               </div>
             )}
             {!simpleMode && (
