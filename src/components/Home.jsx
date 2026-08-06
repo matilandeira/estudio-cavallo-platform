@@ -83,7 +83,7 @@ export default function Home({
 
   return (
     <div className="ec-fade">
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18, marginBottom: 18, alignItems: "start" }}>
+      <div className="ec-dashboard-grid" style={{ marginBottom: 18 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
           <div className="ec-card" style={{ padding: "6px 0" }}>
             <SigningAgenda signingAppointments={signingAppointments} highlightId={highlightId} />
@@ -117,7 +117,7 @@ export default function Home({
                 <span style={{ fontSize: 12, color: C.muted }}>{kpis.inProgressItems.length} en curso</span>
               </div>
             </div>
-            <div className="ec-scroll" style={{ maxHeight: 300, overflowY: "auto" }}>
+            <div className="ec-scroll ec-hide-mobile" style={{ maxHeight: 300, overflowY: "auto" }}>
               <table className="ec-table">
                 <thead><tr><th>Cliente</th><th>Tipo</th><th>Estado</th><th>Responsable</th><th>Padrón</th><th>Marca y modelo</th></tr></thead>
                 <tbody>
@@ -131,6 +131,22 @@ export default function Home({
                   ))}
                 </tbody>
               </table>
+            </div>
+            <div className="ec-scroll ec-hide-desktop" style={{ maxHeight: 340, overflowY: "auto" }}>
+              {kpis.inProgressItems.length === 0 && <div style={{ textAlign: "center", color: C.muted, padding: 20, fontSize: 13 }}>No hay trabajos pendientes o en curso</div>}
+              {kpis.inProgressItems.map((it) => (
+                <div key={it.key} className="ec-mobile-item" onClick={() => setTab(it.tab)} style={{ cursor: "pointer" }}>
+                  <div className="ec-mobile-item-row">
+                    <span style={{ fontSize: 14.5, fontWeight: 700, color: C.ink }}>{it.client || "—"}</span>
+                    <StatusBadge status={it.status} label={it.statusLabel} />
+                  </div>
+                  <div style={{ fontSize: 13, color: C.muted }}>{it.type}</div>
+                  <div className="ec-mobile-item-row">
+                    <span>{it.assignee}</span>
+                    <span>{it.registryNumber || it.makeModel || "—"}</span>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -249,7 +265,7 @@ function SigningAgenda({ signingAppointments, highlightId }) {
       </div>
 
       <AddPanel open={adding} onClose={() => setAdding(false)} onSubmit={save} title="Nueva firma">
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", gap: 10 }}>
+        <div className="ec-form-grid">
           <Field label="Día"><input className="ec-input" type="date" value={form.appointment_date} onChange={(e) => setForm({ ...form, appointment_date: e.target.value })} /></Field>
           <Field label="Hora"><input className="ec-input" type="time" value={form.appointment_time} onChange={(e) => setForm({ ...form, appointment_time: e.target.value })} /></Field>
           <Field label="Tipo"><select className="ec-select" value={form.origin} onChange={(e) => setForm({ ...form, origin: e.target.value })}><option value="Car">Auto</option><option value="Property">Inmueble</option></select></Field>
@@ -329,7 +345,7 @@ function ReadyToSchedule({ documentsReadyToSchedule, signingAppointments }) {
       </div>
 
       <AddPanel open={adding} onClose={() => setAdding(false)} onSubmit={save} title="Nuevo documento pronto">
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10 }}>
+        <div className="ec-form-grid">
           <Field label="Cliente"><input className="ec-input" value={form.client} onChange={(e) => setForm({ ...form, client: e.target.value })} /></Field>
           <Field label="Auto"><input className="ec-input" placeholder="Ej: VW Gol" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></Field>
           <Field label="Observaciones"><input className="ec-input" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></Field>
@@ -389,7 +405,7 @@ function PropertiesNearSigning({ properties, propertiesNearSigning, setTab }) {
       </div>
 
       <AddPanel open={adding} onClose={() => setAdding(false)} onSubmit={save} title="Agregar inmueble próximo a firmarse">
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 10 }}>
+        <div className="ec-form-grid">
           <Field label="Inmueble">
             <select className="ec-select" value={form.propertyId} onChange={(e) => setForm({ ...form, propertyId: e.target.value })}>
               <option value="">Elegir…</option>

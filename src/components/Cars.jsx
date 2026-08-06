@@ -114,7 +114,7 @@ export default function Cars({ cars, documentsReadyToSchedule, simpleMode, highl
     <div className="ec-fade">
       <Header title="Automotores" subtitle="Registro diario y cuatro controles esenciales." onAdd={() => setAdding(true)} />
       <AddPanel open={adding} onClose={() => setAdding(false)} onSubmit={save} title="Nuevo trámite de automotor">
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10 }}>
+        <div className="ec-form-grid">
           <Field label="Fecha"><input className="ec-input" type="date" value={form.case_date} onChange={(e) => setForm({ ...form, case_date: e.target.value })} /></Field>
           <Field label="Cliente"><input className="ec-input" value={form.client} onChange={(e) => setForm({ ...form, client: e.target.value })} /></Field>
           {!simpleMode && (
@@ -141,7 +141,7 @@ export default function Cars({ cars, documentsReadyToSchedule, simpleMode, highl
         {!simpleMode && form.case_type === "Sale" && (
           <div style={{ marginTop: 4 }}>
             <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: ".05em", color: C.muted, fontWeight: 600, marginBottom: 8 }}>Registro (solo compraventa)</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10 }}>
+            <div className="ec-form-grid">
               <Field label="Número de ingreso"><input className="ec-input" value={form.registry_filing_number} onChange={(e) => setForm({ ...form, registry_filing_number: e.target.value })} /></Field>
               <Field label="PIN"><input className="ec-input" value={form.pin} onChange={(e) => setForm({ ...form, pin: e.target.value })} /></Field>
             </div>
@@ -263,7 +263,7 @@ export default function Cars({ cars, documentsReadyToSchedule, simpleMode, highl
             {!simpleMode && a.case_type === "Sale" && (
               <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px dashed ${C.line}` }}>
                 <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: ".05em", color: C.muted, fontWeight: 600, marginBottom: 8 }}>Registro</div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10 }}>
+                <div className="ec-form-grid">
                   <Field label="Número de ingreso"><input className="ec-input" value={a.registry_filing_number || ""} onChange={(e) => update(a.id, { registry_filing_number: e.target.value }, { debounce: true })} /></Field>
                   <Field label="PIN"><input className="ec-input" value={a.pin || ""} onChange={(e) => update(a.id, { pin: e.target.value }, { debounce: true })} /></Field>
                 </div>

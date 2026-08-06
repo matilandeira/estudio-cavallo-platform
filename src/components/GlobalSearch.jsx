@@ -106,13 +106,18 @@ export default function GlobalSearch({ cars, documents, properties, signingAppoi
     <>
       <button
         onClick={() => setOpen(true)}
-        style={{ background: "none", border: `1px solid ${C.brassLight}`, borderRadius: 4, cursor: "pointer", color: C.brassLight, fontSize: 12, padding: "4px 10px", display: "flex", alignItems: "center", gap: 6 }}
+        title="Buscar (Ctrl/Cmd+K)"
+        style={{ background: "none", border: `1px solid ${C.brassLight}`, borderRadius: 4, cursor: "pointer", color: C.brassLight, fontSize: 12, padding: "6px 10px", display: "flex", alignItems: "center", gap: 6 }}
       >
-        <Search size={13} /> Buscar <span className="ec-mono" style={{ opacity: .75 }}>Ctrl K</span>
+        <Search size={14} />
+        {/* "Buscar" label + shortcut hint only make sense with a physical keyboard */}
+        <span className="ec-hide-mobile" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          Buscar <span className="ec-mono" style={{ opacity: .75 }}>Ctrl K</span>
+        </span>
       </button>
 
       {open && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(30,42,36,.5)", zIndex: 300, display: "flex", justifyContent: "center", paddingTop: "12vh" }}>
+        <div className="ec-search-overlay" style={{ position: "fixed", inset: 0, background: "rgba(30,42,36,.5)", zIndex: 300, display: "flex", justifyContent: "center", paddingTop: "12vh" }}>
           <div
             ref={containerRef}
             className="ec-card ec-fade"

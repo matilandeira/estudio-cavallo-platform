@@ -97,7 +97,10 @@ export default function AllWork({ cars, documents, properties, flaggedDocuments,
         <UrgentFilterToggle active={urgentOnly} onChange={setUrgentOnly} count={urgentCount} />
       </div>
 
-      <div className="ec-card ec-scroll" style={{ overflowX: "auto" }}>
+      {/* Desktop: full table. Below 768px this is replaced by single-column
+          cards (next block) — a wide table forces horizontal scrolling on a
+          phone, which is exactly what the mobile pass is meant to avoid. */}
+      <div className="ec-card ec-scroll ec-hide-mobile" style={{ overflowX: "auto" }}>
         <table className="ec-table">
           <thead><tr><th>Origen</th><th>Cliente</th><th>Detalle</th><th>Ingreso / PIN</th><th>Responsable</th><th>Estado</th><th>Prioridad</th><th>Fecha</th><th></th><th></th></tr></thead>
           <tbody>
@@ -131,6 +134,42 @@ export default function AllWork({ cars, documents, properties, flaggedDocuments,
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile: single-column cards with the same key fields (Cliente,
+          Tipo/Padrón, Estado, Responsable, Fecha) instead of the table above. */}
+      <div className="ec-card ec-hide-desktop">
+        {filtered.length === 0 && <div style={{ textAlign: "center", padding: 24, color: C.muted, fontSize: 13 }}>No hay trabajos que coincidan con el filtro.</div>}
+        {filtered.map((it) => (
+          <div key={it.key} className="ec-mobile-item" onClick={() => setTab(it.tab)} style={{ cursor: "pointer" }}>
+            <div className="ec-mobile-item-row">
+              <span className="ec-badge" style={{ background: C.paper2, color: C.brass }}>{translate(ORIGIN_LABELS, it.origin)}</span>
+              <StatusBadge status={it.status} label={it.statusLabel} />
+            </div>
+            <div style={{ fontSize: 14.5, fontWeight: 700 }}>{it.client || "—"}</div>
+            <div style={{ fontSize: 13, color: C.muted }}>{it.type}</div>
+            <div className="ec-mobile-item-row">
+              <span>{assigneesLabel(it.assignees)}</span>
+              <span className="ec-mono">{fmtDate(it.reminderDate || it.date)}{it.reminderDate ? " (vence)" : ""}</span>
+            </div>
+            {it.priority && (
+              <span style={{ fontSize: 12, fontWeight: it.priority === "High" ? 700 : 500, color: PRIORITY_COLOR[it.priority] }}>Prioridad: {translate(PRIORITY_LABELS, it.priority)}</span>
+            )}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 4 }} onClick={(e) => e.stopPropagation()}>
+              {it.origin !== "Property" ? (
+                alreadyFlagged(it) ? (
+                  <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 11, color: C.muted }}>Observado</span>
+                    <DeleteButton onConfirm={() => clearFlag(it)} size={16} title="Eliminar de Documentos observados" confirmText="¿Quitar de Documentos observados?" />
+                  </span>
+                ) : (
+                  <button onClick={() => flagIt(it)} className="ec-btn-ghost" style={{ fontSize: 12, padding: "6px 10px" }}>Marcar observado</button>
+                )
+              ) : <span />}
+              <DeleteButton onConfirm={() => deleteWork(it)} size={16} title="Eliminar este trabajo" confirmText="¿Eliminar este trabajo?" />
+            </div>
+          </div>
+        ))}
       </div>
 
       <div className="ec-card" style={{ padding: "6px 0", marginTop: 18 }}>

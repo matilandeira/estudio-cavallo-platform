@@ -60,6 +60,31 @@ export function StyleSheet() {
       @keyframes ec-highlight-pulse { 0%{ box-shadow: 0 0 0 4px rgba(169,129,63,.55); } 100%{ box-shadow: 0 0 0 0 rgba(169,129,63,0); } }
       .ec-highlight { animation: ec-highlight-pulse 2.2s ease-out; }
       .ec-search-result:hover, .ec-search-result:focus-visible { background: ${C.paper3}; outline: none; }
+
+      /* ============================== RESPONSIVE / MOBILE ==============================
+         Breakpoint: 767px. Most of the app already reflows via flexWrap on inline
+         styles (which media queries can't touch), so these rules are deliberately
+         scoped to (a) real CSS classes, which media queries CAN override, and
+         (b) the few spots — nav header, data tables — that need a structurally
+         different layout on a phone rather than just narrower columns. */
+      html, body { overflow-x: hidden; }
+      .ec-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+      .ec-dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 18px; align-items: start; }
+      .ec-hide-mobile { }
+      .ec-hide-desktop { display: none; }
+      @media (max-width: 767px) {
+        .ec-hide-mobile { display: none !important; }
+        .ec-hide-desktop { display: block; }
+        /* Real font-size (not just visual size) below 16px makes iOS Safari
+           auto-zoom the page on focus — this is the "zoom requirement" the
+           phase brief calls out by name. */
+        .ec-input, .ec-select { font-size: 16px; }
+        .ec-toast { left: 12px; right: 12px; max-width: none; }
+        .ec-search-overlay { padding-top: 6vh; }
+      }
+      .ec-mobile-item { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-bottom: 1px solid ${C.line}; }
+      .ec-mobile-item:last-child { border-bottom: none; }
+      .ec-mobile-item-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 12.5px; color: ${C.muted}; }
     `}</style>
   );
 }

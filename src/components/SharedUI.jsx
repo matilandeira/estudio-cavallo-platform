@@ -61,12 +61,12 @@ export function DeleteButton({ onConfirm, size = 14, title = "Eliminar", confirm
       <button
         onClick={() => setConfirming((v) => !v)}
         title={title}
-        style={{ background: "none", border: "none", cursor: "pointer", color: C.muted, display: "flex", alignItems: "center", padding: 0 }}
+        style={{ background: "none", border: "none", cursor: "pointer", color: C.muted, display: "flex", alignItems: "center", padding: 8, margin: -8 }}
       >
         <Trash2 size={size} />
       </button>
       {confirming && (
-        <div className="ec-card ec-fade" style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 50, padding: 10, width: 190, boxShadow: "0 6px 18px rgba(0,0,0,.18)" }}>
+        <div className="ec-card ec-fade" style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 50, padding: 10, width: 190, maxWidth: "calc(100vw - 24px)", boxShadow: "0 6px 18px rgba(0,0,0,.18)" }}>
           <div style={{ fontSize: 12.5, marginBottom: 8, lineHeight: 1.4 }}>{confirmText}</div>
           <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
             <button className="ec-btn-ghost" style={{ padding: "4px 9px", fontSize: 12 }} onClick={() => setConfirming(false)}>Cancelar</button>
@@ -206,7 +206,7 @@ export function Field({ label, children }) {
 
 export function Check({ checked, onChange }) {
   return (
-    <button onClick={onChange} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, color: checked ? C.bottle : C.line }}>
+    <button onClick={onChange} style={{ background: "none", border: "none", cursor: "pointer", padding: 6, margin: -6, display: "flex", color: checked ? C.bottle : C.line }}>
       {checked ? <CheckCircle2 size={18} /> : <Circle size={18} />}
     </button>
   );

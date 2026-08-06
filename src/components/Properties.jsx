@@ -117,7 +117,7 @@ export default function Properties({ properties, documentsReadyToSchedule, simpl
     <div className="ec-fade">
       <Header title="Inmuebles" subtitle="Seguimiento por cliente y padrón, con checklist y etapa." onAdd={() => setAdding(true)} />
       <AddPanel open={adding} onClose={() => setAdding(false)} onSubmit={save} title="Nuevo inmueble">
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: 12 }}>
+        <div className="ec-form-grid" style={{ marginBottom: 12 }}>
           <Field label="Fecha"><input className="ec-input" type="date" value={form.case_date} onChange={(e) => setForm({ ...form, case_date: e.target.value })} /></Field>
           <Field label="Tipo"><select className="ec-select" value={form.property_type} onChange={(e) => setForm({ ...form, property_type: e.target.value })}>{PROPERTY_TYPES.map((t) => <option key={t} value={t}>{translate(PROPERTY_TYPE_LABELS, t)}</option>)}</select></Field>
           <Field label="Cliente"><input className="ec-input" value={form.client} onChange={(e) => setForm({ ...form, client: e.target.value })} /></Field>

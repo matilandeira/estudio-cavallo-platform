@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import * as XLSX from "xlsx";
-import { Stamp, ClipboardList, Car, FileText, Home as HomeIcon, LayoutDashboard, BookOpen, Download, LogOut, User } from "lucide-react";
+import { Stamp, ClipboardList, Car, FileText, Home as HomeIcon, LayoutDashboard, BookOpen, Download, LogOut, User, Menu, X } from "lucide-react";
 import { C } from "../lib/theme.jsx";
 import { todayISO } from "../lib/format.js";
 import {
@@ -61,6 +61,7 @@ export default function AuthenticatedApp({ user, signOut }) {
   const [tab, setTab] = useState("home");
   const [workInitialFilters, setWorkInitialFilters] = useState({});
   const [highlight, setHighlight] = useState(null); // { tab, id } — set by GlobalSearch "jump to item"
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { toasts, notify, dismiss } = useToasts();
 
   const goToItem = (targetTab, id) => {
@@ -98,38 +99,93 @@ export default function AuthenticatedApp({ user, signOut }) {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             <GlobalSearch cars={cars} documents={documents} properties={properties} signingAppointments={signingAppointments} onNavigate={goToItem} />
-            <ShortcutsHelp />
-            <button onClick={toggleSimpleMode} style={{ background: simpleMode ? C.brass : "none", border: `1px solid ${C.brassLight}`, borderRadius: 4, cursor: "pointer", color: simpleMode ? C.ink : C.brassLight, fontSize: 12, padding: "4px 10px", fontWeight: 600 }}>
-              {simpleMode ? "Modo simple" : "Modo completo"}
-            </button>
+            {/* Keyboard shortcuts don't apply on a touchscreen with no physical keyboard */}
+            <span className="ec-hide-mobile"><ShortcutsHelp /></span>
+
+            <div className="ec-hide-mobile" style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              <button onClick={toggleSimpleMode} style={{ background: simpleMode ? C.brass : "none", border: `1px solid ${C.brassLight}`, borderRadius: 4, cursor: "pointer", color: simpleMode ? C.ink : C.brassLight, fontSize: 12, padding: "4px 10px", fontWeight: 600 }}>
+                {simpleMode ? "Modo simple" : "Modo completo"}
+              </button>
+              <button
+                onClick={() => exportToExcel({
+                  cars: cars.rows, documents: documents.rows, properties: properties.rows,
+                  dailyExcellenceLog: dailyExcellenceLog.rows, flaggedDocuments: flaggedDocuments.rows,
+                  signingAppointments: signingAppointments.rows, documentsReadyToSchedule: documentsReadyToSchedule.rows,
+                  propertiesNearSigning: propertiesNearSigning.rows,
+                })}
+                style={{ background: "none", border: "none", cursor: "pointer", color: C.brassLight, fontSize: 12, display: "flex", alignItems: "center", gap: 5 }}
+              >
+                <Download size={13} /> Exportar a Excel
+              </button>
+              <a href="https://maps.google.com/?q=-34.891102,-56.109699" target="_blank" rel="noreferrer" style={{ color: C.brassLight, fontSize: 12, textDecoration: "none", display: "flex", alignItems: "center", gap: 5 }}>
+                📍 Ver ubicación
+              </a>
+              <div style={{ width: 1, height: 18, background: "rgba(199,164,104,.35)" }} />
+              <span title={user?.email} style={{ display: "flex", alignItems: "center", gap: 6, color: C.brassLight, fontSize: 12, maxWidth: 160 }}>
+                <User size={13} style={{ flexShrink: 0 }} />
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user?.email}</span>
+              </span>
+              <button
+                onClick={signOut}
+                title="Cerrar sesión"
+                style={{ background: "none", border: "none", cursor: "pointer", color: C.brassLight, fontSize: 12, display: "flex", alignItems: "center", gap: 5 }}
+              >
+                <LogOut size={13} /> Cerrar sesión
+              </button>
+            </div>
+
             <button
-              onClick={() => exportToExcel({
-                cars: cars.rows, documents: documents.rows, properties: properties.rows,
-                dailyExcellenceLog: dailyExcellenceLog.rows, flaggedDocuments: flaggedDocuments.rows,
-                signingAppointments: signingAppointments.rows, documentsReadyToSchedule: documentsReadyToSchedule.rows,
-                propertiesNearSigning: propertiesNearSigning.rows,
-              })}
-              style={{ background: "none", border: "none", cursor: "pointer", color: C.brassLight, fontSize: 12, display: "flex", alignItems: "center", gap: 5 }}
+              className="ec-hide-desktop"
+              onClick={() => setMobileMenuOpen((v) => !v)}
+              title={mobileMenuOpen ? "Cerrar menú" : "Más opciones"}
+              style={{ background: "none", border: `1px solid ${C.brassLight}`, borderRadius: 4, cursor: "pointer", color: C.brassLight, padding: "6px 8px", display: "flex", alignItems: "center" }}
             >
-              <Download size={13} /> Exportar a Excel
-            </button>
-            <a href="https://maps.google.com/?q=-34.891102,-56.109699" target="_blank" rel="noreferrer" style={{ color: C.brassLight, fontSize: 12, textDecoration: "none", display: "flex", alignItems: "center", gap: 5 }}>
-              📍 Ver ubicación
-            </a>
-            <div style={{ width: 1, height: 18, background: "rgba(199,164,104,.35)" }} />
-            <span title={user?.email} style={{ display: "flex", alignItems: "center", gap: 6, color: C.brassLight, fontSize: 12, maxWidth: 160 }}>
-              <User size={13} style={{ flexShrink: 0 }} />
-              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user?.email}</span>
-            </span>
-            <button
-              onClick={signOut}
-              title="Cerrar sesión"
-              style={{ background: "none", border: "none", cursor: "pointer", color: C.brassLight, fontSize: 12, display: "flex", alignItems: "center", gap: 5 }}
-            >
-              <LogOut size={13} /> Cerrar sesión
+              {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
           </div>
         </div>
+
+        {mobileMenuOpen && (
+          <div className="ec-hide-desktop" style={{ borderTop: "1px solid rgba(199,164,104,.35)", padding: "12px 24px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
+            <button
+              onClick={() => { toggleSimpleMode(); setMobileMenuOpen(false); }}
+              style={{ background: simpleMode ? C.brass : "none", border: `1px solid ${C.brassLight}`, borderRadius: 4, cursor: "pointer", color: simpleMode ? C.ink : C.brassLight, fontSize: 13.5, padding: "11px 14px", fontWeight: 600, textAlign: "left" }}
+            >
+              {simpleMode ? "Modo simple" : "Modo completo"}
+            </button>
+            <button
+              onClick={() => {
+                exportToExcel({
+                  cars: cars.rows, documents: documents.rows, properties: properties.rows,
+                  dailyExcellenceLog: dailyExcellenceLog.rows, flaggedDocuments: flaggedDocuments.rows,
+                  signingAppointments: signingAppointments.rows, documentsReadyToSchedule: documentsReadyToSchedule.rows,
+                  propertiesNearSigning: propertiesNearSigning.rows,
+                });
+                setMobileMenuOpen(false);
+              }}
+              style={{ background: "none", border: `1px solid ${C.brassLight}`, borderRadius: 4, cursor: "pointer", color: C.brassLight, fontSize: 13.5, padding: "11px 14px", display: "flex", alignItems: "center", gap: 8, textAlign: "left" }}
+            >
+              <Download size={15} /> Exportar a Excel
+            </button>
+            <a
+              href="https://maps.google.com/?q=-34.891102,-56.109699" target="_blank" rel="noreferrer"
+              onClick={() => setMobileMenuOpen(false)}
+              style={{ color: C.brassLight, fontSize: 13.5, textDecoration: "none", border: `1px solid ${C.brassLight}`, borderRadius: 4, padding: "11px 14px", display: "flex", alignItems: "center", gap: 8 }}
+            >
+              📍 Ver ubicación
+            </a>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, color: C.brassLight, fontSize: 12.5, padding: "4px 14px" }}>
+              <User size={13} style={{ flexShrink: 0 }} />
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user?.email}</span>
+            </div>
+            <button
+              onClick={signOut}
+              style={{ background: "none", border: `1px solid ${C.brassLight}`, borderRadius: 4, cursor: "pointer", color: C.brassLight, fontSize: 13.5, padding: "11px 14px", display: "flex", alignItems: "center", gap: 8, textAlign: "left" }}
+            >
+              <LogOut size={15} /> Cerrar sesión
+            </button>
+          </div>
+        )}
       </div>
 
       <div style={{ background: C.paper3, borderBottom: `1.5px solid ${C.ink}`, position: "sticky", top: 0, zIndex: 10 }}>

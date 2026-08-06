@@ -102,7 +102,7 @@ export default function Documents({ documents, simpleMode, highlightId }) {
     <div className="ec-fade">
       <Header title="Documentos" subtitle="Testimonios, certificados, poderes, sucesiones, SAS y otros." onAdd={() => setAdding(true)} />
       <AddPanel open={adding} onClose={() => setAdding(false)} onSubmit={save} title="Nuevo documento">
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10 }}>
+        <div className="ec-form-grid">
           <Field label="Fecha"><input className="ec-input" type="date" value={form.case_date} onChange={(e) => setForm({ ...form, case_date: e.target.value })} /></Field>
           <Field label="Cliente"><input className="ec-input" value={form.client} onChange={(e) => setForm({ ...form, client: e.target.value })} /></Field>
           <Field label="Teléfono (WhatsApp)"><input className="ec-input" placeholder="09X XXX XXX" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></Field>
