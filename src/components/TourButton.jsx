@@ -44,7 +44,7 @@ export default function TourButton({ tourId, steps }) {
   }, [tourId]);
 
   return (
-    <button onClick={runTour} className="ec-btn-ghost" style={{ fontSize: 12, padding: "6px 10px" }}>
+    <button data-tour="tour-button" onClick={runTour} className="ec-btn-ghost" style={{ fontSize: 12, padding: "6px 10px" }}>
       ❓ Ayuda / Tutorial
     </button>
   );

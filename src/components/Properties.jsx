@@ -202,7 +202,7 @@ export default function Properties({ properties, documentsReadyToSchedule, simpl
           <span style={{ fontSize: 12, color: C.muted }}>Seleccionar todo ({filtered.length})</span>
         </label>
       )}
-      <div style={{ display: "grid", gap: 10 }}>
+      <div data-tour="list" style={{ display: "grid", gap: 10 }}>
         {filtered.length === 0 && <div className="ec-card" style={{ padding: 24, textAlign: "center", color: C.muted }}>No se encontraron inmuebles.</div>}
         {filtered.map((i, idx) => {
           const keys = checklistFor(i.property_type);

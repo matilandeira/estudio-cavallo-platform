@@ -422,7 +422,7 @@ export function Header({ title, subtitle, onAdd, addLabel = "Agregar", addDisabl
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         {actions}
-        {onAdd && <button className="ec-btn" onClick={onAdd} disabled={addDisabled}><Plus size={14} /> {addLabel}</button>}
+        {onAdd && <button data-tour="add-button" className="ec-btn" onClick={onAdd} disabled={addDisabled}><Plus size={14} /> {addLabel}</button>}
       </div>
     </div>
   );

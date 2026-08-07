@@ -105,7 +105,7 @@ export default function AllWork({ cars, documents, properties, flaggedDocuments,
       {/* Desktop: full table. Below 768px this is replaced by single-column
           cards (next block) — a wide table forces horizontal scrolling on a
           phone, which is exactly what the mobile pass is meant to avoid. */}
-      <div className="ec-card ec-scroll ec-hide-mobile" style={{ overflowX: "auto" }}>
+      <div data-tour="list" className="ec-card ec-scroll ec-hide-mobile" style={{ overflowX: "auto" }}>
         <table className="ec-table">
           <thead><tr><th>Origen</th><th>Cliente</th><th>Detalle</th><th>Ingreso / PIN</th><th>Responsable</th><th>Estado</th><th>Prioridad</th><th>Fecha</th><th></th><th></th></tr></thead>
           <tbody>
