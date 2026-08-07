@@ -13,6 +13,7 @@ import { useRecurringTasks } from "../hooks/useRecurringTasks.js";
 import { useToasts } from "../hooks/useToasts.js";
 import { Toasts, LoadingBlock, ShortcutsHelp } from "./SharedUI.jsx";
 import GlobalSearch from "./GlobalSearch.jsx";
+import ChangePasswordModal from "./ChangePasswordModal.jsx";
 import AIChatModal from "./AIChatModal.jsx";
 import Home from "./Home.jsx";
 import Cars from "./Cars.jsx";
@@ -62,6 +63,7 @@ export default function AuthenticatedApp({ user, signOut }) {
   const [workInitialFilters, setWorkInitialFilters] = useState({});
   const [highlight, setHighlight] = useState(null); // { tab, id, query } — set by GlobalSearch "jump to item"
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const { toasts, notify, dismiss } = useToasts();
 
   // query seeds the target tab's own local search box, so the row is
@@ -124,10 +126,14 @@ export default function AuthenticatedApp({ user, signOut }) {
                 📍 Ver ubicación
               </a>
               <div style={{ width: 1, height: 18, background: "rgba(199,164,104,.35)" }} />
-              <span title={user?.email} style={{ display: "flex", alignItems: "center", gap: 6, color: C.brassLight, fontSize: 12, maxWidth: 160 }}>
+              <button
+                onClick={() => setChangePasswordOpen(true)}
+                title="Cambiar contraseña"
+                style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, color: C.brassLight, fontSize: 12, maxWidth: 160, padding: 0 }}
+              >
                 <User size={13} style={{ flexShrink: 0 }} />
                 <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user?.email}</span>
-              </span>
+              </button>
               <button
                 onClick={signOut}
                 title="Cerrar sesión"
@@ -177,10 +183,13 @@ export default function AuthenticatedApp({ user, signOut }) {
             >
               📍 Ver ubicación
             </a>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, color: C.brassLight, fontSize: 12.5, padding: "4px 14px" }}>
-              <User size={13} style={{ flexShrink: 0 }} />
+            <button
+              onClick={() => { setChangePasswordOpen(true); setMobileMenuOpen(false); }}
+              style={{ background: "none", border: `1px solid ${C.brassLight}`, borderRadius: 4, cursor: "pointer", color: C.brassLight, fontSize: 13.5, padding: "11px 14px", display: "flex", alignItems: "center", gap: 8, textAlign: "left" }}
+            >
+              <User size={15} style={{ flexShrink: 0 }} />
               <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user?.email}</span>
-            </div>
+            </button>
             <button
               onClick={signOut}
               style={{ background: "none", border: `1px solid ${C.brassLight}`, borderRadius: 4, cursor: "pointer", color: C.brassLight, fontSize: 13.5, padding: "11px 14px", display: "flex", alignItems: "center", gap: 8, textAlign: "left" }}
@@ -230,6 +239,7 @@ export default function AuthenticatedApp({ user, signOut }) {
         )}
       </div>
 
+      <ChangePasswordModal open={changePasswordOpen} onClose={() => setChangePasswordOpen(false)} notify={notify} />
       <AIChatModal />
     </>
   );
